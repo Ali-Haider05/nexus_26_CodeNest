@@ -14,6 +14,11 @@ const admins = [
 ];
 
 async function seed() {
+  const password = process.env.SEED_ADMIN_PASSWORD;
+  if (!password || password.length < 8 || Buffer.byteLength(password) > 72) {
+    throw new Error('Set SEED_ADMIN_PASSWORD to at least 8 characters and at most 72 bytes');
+  }
+
   const schema = await fs.readFile(path.join(__dirname, 'schema.sql'), 'utf8');
   const client = await pool.connect();
   const created = [];
@@ -34,7 +39,7 @@ async function seed() {
     }
 
     for (const [name, email, department] of admins) {
-      const passwordHash = await bcrypt.hash('Admin@123', 12);
+      const passwordHash = await bcrypt.hash(password, 12);
       const role = department === null ? 'super_admin' : 'dept_admin';
       const result = await client.query(
         `INSERT INTO users (name, email, password_hash, role, department_id)
