@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import StatusBadge from '../common/StatusBadge';
 import CategoryBadge from '../common/CategoryBadge';
-import PriorityBadge from '../common/PriorityBadge';
 import EmptyState from '../common/EmptyState';
 import { Search, Filter, Eye, PlusCircle, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -35,7 +34,7 @@ export default function MyComplaintsView({
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
   const paginatedList = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  const statuses = ['all', 'Pending', 'Under Review', 'In Progress', 'Resolved', 'Rejected'];
+  const statuses = ['all', 'Pending', 'In Progress', 'Resolved', 'Rejected'];
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -141,7 +140,6 @@ export default function MyComplaintsView({
                   <th className="py-4 px-6">Subject / Title</th>
                   <th className="py-4 px-6">Category & Routing</th>
                   <th className="py-4 px-6">Submitted Date</th>
-                  <th className="py-4 px-6">Priority</th>
                   <th className="py-4 px-6">Status</th>
                   <th className="py-4 px-6 text-right">Action</th>
                 </tr>
@@ -178,9 +176,6 @@ export default function MyComplaintsView({
                             year: 'numeric',
                           })
                         : 'Recent'}
-                    </td>
-                    <td className="py-4 px-6">
-                      <PriorityBadge priority={c.priority} />
                     </td>
                     <td className="py-4 px-6 whitespace-nowrap">
                       <StatusBadge status={c.status} />
@@ -224,7 +219,6 @@ export default function MyComplaintsView({
 
                 <div className="flex flex-wrap items-center gap-2 pt-1">
                   <CategoryBadge category={c.category} />
-                  <PriorityBadge priority={c.priority} />
                 </div>
 
                 <div className="flex items-center justify-between pt-1 text-[11px] text-[#77847D]">

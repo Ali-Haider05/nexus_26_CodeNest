@@ -1,24 +1,23 @@
-import React from 'react';
+import React, { useState } from 'react';
 import StatusBadge from '../common/StatusBadge';
 import CategoryBadge from '../common/CategoryBadge';
-import PriorityBadge from '../common/PriorityBadge';
 import ComplaintTimeline from '../common/ComplaintTimeline';
-import { X, Calendar, User, Building, MessageSquare, Star, ExternalLink, ShieldCheck } from 'lucide-react';
+import { X, Calendar, User, Building, MessageSquare, ExternalLink, ShieldCheck } from 'lucide-react';
 
 export default function ComplaintDetailsModal({
   complaint,
   isOpen,
   onClose,
-  onOpenFeedback,
+  onResponse,
   onOpenUpdateStatus,
   currentUser,
 }) {
+  const [remark, setRemark] = useState('');
+  const [responseError, setResponseError] = useState('');
+  const [sending, setSending] = useState(false);
   if (!isOpen || !complaint) return null;
 
-  const isStudent = currentUser?.role === 'student';
-  const isAdmin = currentUser?.role === 'dept_admin' || currentUser?.role === 'super_admin';
-  const isResolved = complaint.status === 'Resolved';
-  const hasFeedback = !!complaint.feedback;
+  const isAdmin = currentUser?.role === 'dept_admin';
 
   const formattedCreated = new Date(complaint.createdAt).toLocaleDateString('en-US', {
     month: 'long',
@@ -41,7 +40,6 @@ export default function ComplaintDetailsModal({
               {complaint.id}
             </span>
             <StatusBadge status={complaint.status} size="sm" />
-            <PriorityBadge priority={complaint.priority} />
           </div>
 
           <button
@@ -130,8 +128,8 @@ export default function ComplaintDetailsModal({
           )}
 
           {/* Current Official Remarks */}
-          {complaint.remarks && (
-            <div className="p-4 rounded-2xl bg-[#ECFDF5] border border-[#A7F3D0]">
+          {complaint.responses.map((response, index) => (
+            <div key={index} className="p-4 rounded-2xl bg-[#ECFDF5] border border-[#A7F3D0]">
               <div className="flex items-center gap-2 mb-1.5">
                 <MessageSquare size={16} className="text-[#166534]" />
                 <h4 className="text-xs font-bold text-[#166534] uppercase tracking-wider">
@@ -139,10 +137,11 @@ export default function ComplaintDetailsModal({
                 </h4>
               </div>
               <p className="text-sm font-medium text-[#166534] leading-relaxed">
-                "{complaint.remarks}"
+                {response.remark}
               </p>
+              <p className="text-xs mt-1">{response.adminName} ? {new Date(response.createdAt).toLocaleString()}</p>
             </div>
-          )}
+          ))}
 
           {/* Rejection Reason if Rejected */}
           {complaint.rejectionReason && (
@@ -156,59 +155,22 @@ export default function ComplaintDetailsModal({
             </div>
           )}
 
-          {/* Student Resolution Feedback */}
-          {isResolved && (
-            <div className="p-4 rounded-2xl bg-white border border-[#E5E9E4] shadow-xs">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-xs font-bold text-[#77847D] uppercase tracking-wider">
-                  Student Resolution Feedback
-                </h4>
-                {isStudent && !hasFeedback && (
-                  <button
-                    onClick={() => {
-                      onClose();
-                      onOpenFeedback(complaint);
-                    }}
-                    className="text-xs font-bold text-[#247653] hover:underline flex items-center gap-1"
-                  >
-                    <Star size={13} className="text-[#F18B38]" />
-                    Leave Feedback
-                  </button>
-                )}
-              </div>
-
-              {hasFeedback ? (
-                <div className="bg-[#FAF9F5] p-3 rounded-xl border border-[#E5E9E4] space-y-1">
-                  <div className="flex items-center gap-1">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <Star
-                        key={star}
-                        size={15}
-                        className={
-                          star <= complaint.feedback.rating
-                            ? 'text-[#F18B38] fill-[#F18B38]'
-                            : 'text-[#E5E9E4]'
-                        }
-                      />
-                    ))}
-                    <span className="text-xs font-bold text-[#24332D] ml-1.5">
-                      {complaint.feedback.rating} / 5 Stars
-                    </span>
-                  </div>
-                  {complaint.feedback.comment && (
-                    <p className="text-xs text-[#24332D] italic">
-                      "{complaint.feedback.comment}"
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <p className="text-xs text-[#77847D] italic">
-                  No feedback rating submitted yet by student.
-                </p>
-              )}
-            </div>
+          {isAdmin && (
+            <form className="space-y-2" onSubmit={async (event) => {
+              event.preventDefault();
+              if (!remark.trim()) return;
+              setResponseError('');
+              setSending(true);
+              try { await onResponse(complaint.id, remark.trim()); setRemark(''); }
+              catch (error) { setResponseError(error.message); }
+              finally { setSending(false); }
+            }}>
+              <label className="block text-xs font-bold" htmlFor="complaint-response">Department response</label>
+              <textarea id="complaint-response" className="w-full rounded-xl border p-3 text-sm" value={remark} onChange={(event) => setRemark(event.target.value)} required />
+              {responseError && <p role="alert" className="text-sm text-red-700">{responseError}</p>}
+              <button className="rounded-xl bg-[#247653] px-4 py-2 text-sm text-white" disabled={sending || !remark.trim()}>{sending ? "Sending?" : "Send response"}</button>
+            </form>
           )}
-
           {/* Complete Status Timeline */}
           <div>
             <h3 className="text-xs font-bold text-[#77847D] uppercase tracking-wider mb-3">
@@ -231,19 +193,6 @@ export default function ComplaintDetailsModal({
           </button>
 
           <div className="flex items-center gap-2">
-            {isStudent && isResolved && !hasFeedback && (
-              <button
-                onClick={() => {
-                  onClose();
-                  onOpenFeedback(complaint);
-                }}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#F18B38] hover:bg-[#d97728] text-white text-sm font-semibold shadow-xs transition-colors"
-              >
-                <Star size={15} />
-                Rate Resolution
-              </button>
-            )}
-
             {isAdmin && (
               <button
                 onClick={() => {

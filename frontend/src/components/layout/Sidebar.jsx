@@ -32,7 +32,7 @@ export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose }) {
         { id: 'submit', label: 'Submit Complaint', icon: PlusCircle, highlight: true },
         { id: 'my-complaints', label: 'My Complaints', icon: FileText },
         { id: 'tracking', label: 'Complaint Tracking', icon: Clock },
-        { id: 'feedback', label: 'Feedback / Responses', icon: MessageSquareQuote },
+        { id: 'feedback', label: 'Department Responses', icon: MessageSquareQuote },
         { id: 'profile', label: 'Profile', icon: User },
       ];
     } else if (role === 'dept_admin') {
@@ -190,7 +190,7 @@ export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose }) {
             className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-[#D0DCD6] hover:bg-[#DC4545]/20 hover:text-[#FECACA] transition-colors"
           >
             <LogOut size={16} className="text-[#A3B8B0]" />
-            <span>Sign Out</span>
+            <span>Logout</span>
           </button>
         </div>
       </aside>

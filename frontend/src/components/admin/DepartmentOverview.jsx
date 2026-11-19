@@ -2,7 +2,6 @@ import React from 'react';
 import StatCard from '../common/StatCard';
 import StatusBadge from '../common/StatusBadge';
 import CategoryBadge from '../common/CategoryBadge';
-import PriorityBadge from '../common/PriorityBadge';
 import {
   FolderKanban,
   Clock,
@@ -13,27 +12,21 @@ import {
   ShieldCheck,
   ChevronRight,
   Eye,
-  TrendingUp,
 } from 'lucide-react';
 
 export default function DepartmentOverview({
   complaints = [],
   currentUser,
+  stats,
   onNavigate,
   onSelectComplaint,
   onOpenUpdateStatus,
 }) {
   const deptName = currentUser?.department || 'Department Administration';
 
-  const total = complaints.length;
-  const pending = complaints.filter((c) => c.status === 'Pending').length;
-  const underReview = complaints.filter((c) => c.status === 'Under Review').length;
-  const inProgress = complaints.filter((c) => c.status === 'In Progress').length;
-  const resolved = complaints.filter((c) => c.status === 'Resolved').length;
-  const rejected = complaints.filter((c) => c.status === 'Rejected').length;
+  const { total, pending, in_progress: inProgress, resolved, rejected } = stats.totals;
 
   const resolutionRate = total > 0 ? Math.round((resolved / total) * 100) : 0;
-  const urgentCount = complaints.filter((c) => c.priority === 'Urgent' && c.status !== 'Resolved').length;
 
   const recentAssigned = complaints.slice(0, 5);
 
@@ -68,7 +61,7 @@ export default function DepartmentOverview({
       </div>
 
       {/* Metric Stat Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
         <StatCard
           title="Total Assigned"
           value={total}
@@ -86,15 +79,6 @@ export default function DepartmentOverview({
           bgColor="#FEF3C7"
           subtitle="Awaiting triage"
           onClick={() => onNavigate('pending')}
-        />
-        <StatCard
-          title="Under Review"
-          value={underReview}
-          icon={Eye}
-          color="#7C5CC4"
-          bgColor="#F3E8FF"
-          subtitle="Assessing details"
-          onClick={() => onNavigate('assigned')}
         />
         <StatCard
           title="In Progress"
@@ -126,22 +110,6 @@ export default function DepartmentOverview({
       </div>
 
       {/* Urgent Alert Banner if any urgent complaints */}
-      {urgentCount > 0 && (
-        <div className="p-4 rounded-2xl bg-red-50 border border-red-200 flex items-center justify-between text-xs text-red-800">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-ping" />
-            <span className="font-bold">
-              Action Required: {urgentCount} urgent complaint{urgentCount > 1 ? 's' : ''} in your queue requires immediate inspection!
-            </span>
-          </div>
-          <button
-            onClick={() => onNavigate('assigned')}
-            className="font-bold underline text-red-900 hover:text-red-700"
-          >
-            Review Urgent
-          </button>
-        </div>
-      )}
 
       {/* Recent Assigned Complaints Table */}
       <div className="bg-white rounded-3xl border border-[#E5E9E4] p-6 shadow-xs space-y-4">
@@ -180,7 +148,6 @@ export default function DepartmentOverview({
                       {c.id}
                     </span>
                     <StatusBadge status={c.status} size="xs" />
-                    <PriorityBadge priority={c.priority} />
                   </div>
                   <h4 className="text-xs font-bold text-[#24332D] truncate">
                     {c.title}

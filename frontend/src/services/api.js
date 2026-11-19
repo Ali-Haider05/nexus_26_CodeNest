@@ -1,135 +1,46 @@
-// Centralized API Client & Real Backend Integration Layer
-// Handles HTTP communication with the backend Express / Neon PostgreSQL server
-// Provides multipart/form-data support for profile picture and original complaint attachments
+const API_URL = (import.meta.env.VITE_API_URL || 'https://nexus-26-codenest.onrender.com').replace(/\/+$/, '');
+const tokenKey = 'campusconnect_token';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL !== undefined 
-  ? import.meta.env.VITE_API_BASE_URL 
-  : (import.meta.env.PROD ? '' : 'http://localhost:5000');
-
-class ApiClient {
-  constructor() {
-    this.baseUrl = API_BASE_URL;
-    this.backendHealthy = false;
-    this.lastHealthCheck = null;
-  }
-
-  getToken() {
-    return localStorage.getItem('campusconnect_token');
-  }
-
+export const api = {
+  getToken: () => localStorage.getItem(tokenKey),
   setToken(token) {
-    if (token) {
-      localStorage.setItem('campusconnect_token', token);
-    } else {
-      localStorage.removeItem('campusconnect_token');
-    }
-  }
-
-  // Check backend server & Neon PostgreSQL health
-  async checkBackendHealth() {
+    if (token) localStorage.setItem(tokenKey, token);
+    else localStorage.removeItem(tokenKey);
+  },
+  async request(path, { method = 'GET', body, authenticated = true } = {}) {
+    const token = authenticated && this.getToken();
+    const headers = { Accept: 'application/json' };
+    if (token) headers.Authorization = 'Bearer ' + token;
+    if (body !== undefined) headers['Content-Type'] = 'application/json';
+    let response;
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
-      const url = `${this.baseUrl}/health`;
-      const res = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeoutId);
-
-      if (res.ok) {
-        const data = await res.json();
-        this.backendHealthy = data.status === 'ok';
-        this.lastHealthCheck = data;
-        return { isConnected: true, data };
-      }
-    } catch {
-      this.backendHealthy = false;
-    }
-    return { isConnected: false, data: null };
-  }
-
-  // Core HTTP Request dispatcher with authentication headers, multipart detection, and timeout
-  async request(endpoint, options = {}) {
-    const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-    const url = `${this.baseUrl}${cleanEndpoint}`;
-    const token = this.getToken();
-
-    const headers = { ...options.headers };
-
-    // Set JSON content-type only if body is NOT FormData
-    if (!(options.body instanceof FormData) && !headers['Content-Type']) {
-      headers['Content-Type'] = 'application/json';
-    }
-    if (!headers['Accept']) {
-      headers['Accept'] = 'application/json';
-    }
-
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    try {
-      const controller = new AbortController();
-      const timeoutMs = options.timeout || 15000;
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-      const response = await fetch(url, {
-        ...options,
-        headers,
-        signal: controller.signal,
+      response = await fetch(API_URL + path, {
+        method, headers, body: JSON.stringify(body), signal: AbortSignal.timeout(20000),
       });
-
-      clearTimeout(timeoutId);
-
-      // Handle 401 Unauthorized
-      if (response.status === 401) {
+    } catch (error) {
+      throw new Error(error.name === 'TimeoutError' ? 'The server took too long to respond.' : 'Could not reach the server.');
+    }
+    const data = await response.json().catch(() => null);
+    if (!response.ok) {
+      if (response.status === 401 && token && this.getToken() === token) {
         this.setToken(null);
         window.dispatchEvent(new CustomEvent('campusconnect_unauthorized'));
-        const err = new Error('Session expired or unauthorized. Please log in again.');
-        err.status = 401;
-        throw err;
       }
-
-      // Handle 403 Forbidden
-      if (response.status === 403) {
-        const err = new Error('Access denied. You do not have permission for this resource.');
-        err.status = 403;
-        throw err;
-      }
-
-      const contentType = response.headers.get('content-type');
-      let data = null;
-      if (contentType && contentType.includes('application/json')) {
-        data = await response.json();
-      } else {
-        data = await response.text();
-      }
-
-      if (!response.ok) {
-        const message = data?.message || data?.error || `Request failed with status ${response.status}`;
-        const error = new Error(message);
-        error.status = response.status;
-        error.data = data;
-        throw error;
-      }
-
-      return data;
-    } catch (err) {
-      if (err.name === 'AbortError') {
-        const timeoutErr = new Error('Request timed out. The backend server took too long to respond.');
-        timeoutErr.status = 408;
-        throw timeoutErr;
-      }
-      throw err;
+      const message = {
+        400: data?.message || 'Check the submitted fields and try again.',
+        401: authenticated ? 'Your session expired. Please sign in again.' : 'Invalid email or password.',
+        403: 'Access denied. Your role cannot perform this action.',
+      }[response.status] || data?.message || 'Request failed (HTTP ' + response.status + ').';
+      throw Object.assign(new Error(message), { status: response.status });
     }
-  }
-
-  // Upload multipart form data (e.g. for image files)
-  async upload(endpoint, formData, options = {}) {
-    return this.request(endpoint, {
-      method: 'POST',
-      body: formData,
-      ...options,
-    });
-  }
-}
-
-export const api = new ApiClient();
+    return data;
+  },
+  async checkBackendHealth() {
+    try {
+      const data = await this.request('/health');
+      return { isConnected: data?.status === 'ok', data };
+    } catch {
+      return { isConnected: false };
+    }
+  },
+};

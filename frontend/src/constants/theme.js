@@ -24,14 +24,6 @@ export const STATUS_CONFIG = {
     label: 'Pending',
     description: 'Waiting for departmental review',
   },
-  'Under Review': {
-    color: '#7C5CC4',
-    bg: '#F3E8FF',
-    border: '#E9D5FF',
-    text: '#6B21A8',
-    label: 'Under Review',
-    description: 'Complaint is being assessed',
-  },
   'In Progress': {
     color: '#2563EB',
     bg: '#EFF6FF',
@@ -67,7 +59,7 @@ export const CATEGORY_CONFIG = {
     bg: '#FFF7ED',
     border: '#FFEDD5',
     text: '#9A3412',
-    department: 'Cafeteria Administration',
+    department: 'Cafeteria',
     icon: 'UtensilsCrossed',
     description: 'Food quality, hygiene, pricing, staff service',
     examples: [
@@ -84,7 +76,7 @@ export const CATEGORY_CONFIG = {
     bg: '#FAF5FF',
     border: '#F3E8FF',
     text: '#581C87',
-    department: 'Library Administration',
+    department: 'Library',
     icon: 'BookOpen',
     description: 'Books, study space, hours, librarian availability',
     examples: [
@@ -101,7 +93,7 @@ export const CATEGORY_CONFIG = {
     bg: '#EFF6FF',
     border: '#DBEAFE',
     text: '#1E40AF',
-    department: 'Laboratory / IT Administration',
+    department: 'Laboratory / IT',
     icon: 'Cpu',
     description: 'Computer labs, internet, projectors, software tools',
     examples: [
@@ -118,7 +110,7 @@ export const CATEGORY_CONFIG = {
     bg: '#F0FDFA',
     border: '#CCFBF1',
     text: '#115E59',
-    department: 'Teaching / Academic Administration',
+    department: 'Teaching / Academic',
     icon: 'GraduationCap',
     description: 'Lectures, course notes, teacher punctuality, classroom management',
     examples: [
@@ -131,18 +123,11 @@ export const CATEGORY_CONFIG = {
 };
 
 export const DEPARTMENTS = [
-  'Cafeteria Administration',
-  'Library Administration',
-  'Laboratory / IT Administration',
-  'Teaching / Academic Administration'
+  'Cafeteria',
+  'Library',
+  'Laboratory / IT',
+  'Teaching / Academic'
 ];
-
-export const PRIORITY_CONFIG = {
-  Urgent: { label: 'Urgent', color: '#DC2626', bg: '#FEE2E2', text: '#991B1B' },
-  High: { label: 'High', color: '#EA580C', bg: '#FFEDD5', text: '#9A3412' },
-  Medium: { label: 'Medium', color: '#D97706', bg: '#FEF3C7', text: '#92400E' },
-  Low: { label: 'Low', color: '#4B5563', bg: '#F3F4F6', text: '#374151' }
-};
 
 // Automatic Department Routing Helper
 export function getDepartmentForCategory(categoryName) {

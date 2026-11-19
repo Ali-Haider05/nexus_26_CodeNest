@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { complaintService } from '../../services/complaintService';
 import Navbar from '../layout/Navbar';
 import Sidebar from '../layout/Sidebar';
 import ComplaintDetailsModal from '../modals/ComplaintDetailsModal';
 import UpdateStatusModal from '../modals/UpdateStatusModal';
-import FeedbackModal from '../modals/FeedbackModal';
+import StatsPanels from './StatsPanels';
+import { api } from '../../services/api';
 
 // Student Views
 import StudentOverview from '../student/StudentOverview';
@@ -44,54 +45,59 @@ export default function DashboardLayout() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [updateStatusComplaint, setUpdateStatusComplaint] = useState(null);
   const [isUpdateStatusOpen, setIsUpdateStatusOpen] = useState(false);
-  const [feedbackComplaint, setFeedbackComplaint] = useState(null);
-  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+  const [stats, setStats] = useState(null);
+  const [recurring, setRecurring] = useState(null);
+  const [recurringError, setRecurringError] = useState('');
+  const [directoryDepartment, setDirectoryDepartment] = useState('all');
+  const navigate = (tab) => { setDirectoryDepartment('all'); setActiveTab(tab); };
 
   // Toast notification state
   const [toast, setToast] = useState(null);
-
-  // Reset to overview and fetch complaints when role or identity changes
-  useEffect(() => {
-    setActiveTab('overview');
-    loadComplaints();
-  }, [role, currentUser?.id, currentUser?.department]);
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
   };
 
-  const loadComplaints = async () => {
-    setLoading(true);
+  const loadComplaints = useCallback(async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     setFetchError('');
     try {
-      const data = await complaintService.getComplaints({
-        role,
-        department: currentUser?.department,
-        studentId: currentUser?.id,
-      });
-      setComplaints(data || []);
+      const [data, summary] = await Promise.all([
+        complaintService.getComplaints({ role }),
+        role === 'student' ? null : api.request('/api/stats'),
+      ]);
+      setComplaints(data);
+      setStats(summary);
+      if (summary) {
+        setRecurringError('');
+        try { setRecurring(await api.request('/api/stats/recurring')); }
+        catch (error) { setRecurring(null); setRecurringError(error.message); }
+      }
     } catch (err) {
       console.error('Failed to load complaints from backend:', err);
       setFetchError(err.message || 'Unable to connect to backend complaint API.');
       setComplaints([]);
+      setStats(null);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
-  };
+  }, [role]);
+
+  useEffect(() => { void loadComplaints(); }, [currentUser?.id, loadComplaints]);
 
   // Complaint Submission Handler
   const handleComplaintSubmit = async (formData) => {
-    const created = await complaintService.createComplaint(formData, currentUser);
-    await loadComplaints();
+    const created = await complaintService.createComplaint(formData);
+    await loadComplaints(false);
     showToast(`Complaint ${created.id || 'record'} submitted successfully!`);
     return created;
   };
 
   // Status Update Handler
   const handleStatusUpdate = async (updateData) => {
-    const updated = await complaintService.updateComplaintStatus(updateData, currentUser);
-    await loadComplaints();
+    const updated = await complaintService.updateComplaintStatus(updateData);
+    await loadComplaints(false);
     showToast(`Complaint status updated to ${updated.status || updateData.status}.`);
     if (selectedComplaint && selectedComplaint.id === updated.id) {
       setSelectedComplaint(updated);
@@ -99,19 +105,17 @@ export default function DashboardLayout() {
     return updated;
   };
 
-  // Student Feedback Handler
-  const handleFeedbackSubmit = async (feedbackData) => {
-    const updated = await complaintService.submitFeedback(feedbackData, currentUser);
-    await loadComplaints();
-    showToast('Thank you! Your feedback has been recorded.');
-    if (selectedComplaint && selectedComplaint.id === updated.id) {
-      setSelectedComplaint(updated);
+  const openComplaint = async (complaint) => {
+    try {
+      setSelectedComplaint(await complaintService.getComplaintById(complaint.id));
+      setIsDetailsOpen(true);
+    } catch (error) {
+      showToast(error.message, 'error');
     }
-    return updated;
   };
 
-  // Filter department handler from Directory
   const handleFilterDepartmentFromDirectory = (deptName) => {
+    setDirectoryDepartment(deptName);
     setActiveTab('all-complaints');
   };
 
@@ -140,7 +144,7 @@ export default function DashboardLayout() {
       {/* Sidebar */}
       <Sidebar
         activeTab={activeTab}
-        onSelectTab={setActiveTab}
+        onSelectTab={navigate}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
@@ -150,10 +154,6 @@ export default function DashboardLayout() {
         {/* Navbar */}
         <Navbar
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-          onSelectComplaint={(c) => {
-            setSelectedComplaint(c);
-            setIsDetailsOpen(true);
-          }}
         />
 
         {/* Page Body */}
@@ -166,7 +166,7 @@ export default function DashboardLayout() {
               </div>
               <button
                 type="button"
-                onClick={loadComplaints}
+                onClick={() => loadComplaints()}
                 className="px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold flex items-center gap-1 transition-colors shrink-0"
               >
                 <RefreshCw size={12} /> Retry
@@ -188,11 +188,8 @@ export default function DashboardLayout() {
                     <StudentOverview
                       complaints={complaints}
                       currentUser={currentUser}
-                      onNavigate={setActiveTab}
-                      onSelectComplaint={(c) => {
-                        setSelectedComplaint(c);
-                        setIsDetailsOpen(true);
-                      }}
+                      onNavigate={navigate}
+                      onSelectComplaint={openComplaint}
                     />
                   )}
                   {activeTab === 'submit' && (
@@ -205,41 +202,24 @@ export default function DashboardLayout() {
                   {activeTab === 'my-complaints' && (
                     <MyComplaintsView
                       complaints={complaints}
-                      onSelectComplaint={(c) => {
-                        setSelectedComplaint(c);
-                        setIsDetailsOpen(true);
-                      }}
+                      onSelectComplaint={openComplaint}
                       onNavigateSubmit={() => setActiveTab('submit')}
                     />
                   )}
                   {activeTab === 'tracking' && (
                     <ComplaintTrackingView
                       complaints={complaints}
-                      onSelectComplaint={(c) => {
-                        setSelectedComplaint(c);
-                        setIsDetailsOpen(true);
-                      }}
-                      onOpenFeedback={(c) => {
-                        setFeedbackComplaint(c);
-                        setIsFeedbackOpen(true);
-                      }}
+                      onSelectComplaint={openComplaint}
                     />
                   )}
                   {activeTab === 'feedback' && (
                     <FeedbackResponsesView
                       complaints={complaints}
-                      onSelectComplaint={(c) => {
-                        setSelectedComplaint(c);
-                        setIsDetailsOpen(true);
-                      }}
-                      onOpenFeedback={(c) => {
-                        setFeedbackComplaint(c);
-                        setIsFeedbackOpen(true);
-                      }}
+                      onSelectComplaint={openComplaint}
                     />
                   )}
                   {activeTab === 'profile' && (
-                    <StudentProfileView complaints={complaints} />
+                    <StudentProfileView complaints={complaints} department={stats?.byDepartment[0]?.department} />
                   )}
                 </>
               )}
@@ -247,15 +227,13 @@ export default function DashboardLayout() {
               {/* DEPARTMENTAL ADMIN VIEWS */}
               {role === 'dept_admin' && (
                 <>
-                  {activeTab === 'overview' && (
+                  {activeTab === 'overview' && stats && (
                     <DepartmentOverview
                       complaints={complaints}
-                      currentUser={currentUser}
-                      onNavigate={setActiveTab}
-                      onSelectComplaint={(c) => {
-                        setSelectedComplaint(c);
-                        setIsDetailsOpen(true);
-                      }}
+                      currentUser={{ ...currentUser, department: stats?.byDepartment[0]?.department }}
+                      stats={stats}
+                      onNavigate={navigate}
+                      onSelectComplaint={openComplaint}
                       onOpenUpdateStatus={(c) => {
                         setUpdateStatusComplaint(c);
                         setIsUpdateStatusOpen(true);
@@ -266,11 +244,8 @@ export default function DashboardLayout() {
                     <AssignedComplaintsView
                       complaints={complaints}
                       defaultStatus="all"
-                      departmentName={currentUser?.department}
-                      onSelectComplaint={(c) => {
-                        setSelectedComplaint(c);
-                        setIsDetailsOpen(true);
-                      }}
+                      departmentName={stats?.byDepartment[0]?.department}
+                      onSelectComplaint={openComplaint}
                       onOpenUpdateStatus={(c) => {
                         setUpdateStatusComplaint(c);
                         setIsUpdateStatusOpen(true);
@@ -281,11 +256,8 @@ export default function DashboardLayout() {
                     <AssignedComplaintsView
                       complaints={complaints}
                       defaultStatus="Pending"
-                      departmentName={currentUser?.department}
-                      onSelectComplaint={(c) => {
-                        setSelectedComplaint(c);
-                        setIsDetailsOpen(true);
-                      }}
+                      departmentName={stats?.byDepartment[0]?.department}
+                      onSelectComplaint={openComplaint}
                       onOpenUpdateStatus={(c) => {
                         setUpdateStatusComplaint(c);
                         setIsUpdateStatusOpen(true);
@@ -296,11 +268,8 @@ export default function DashboardLayout() {
                     <AssignedComplaintsView
                       complaints={complaints}
                       defaultStatus="In Progress"
-                      departmentName={currentUser?.department}
-                      onSelectComplaint={(c) => {
-                        setSelectedComplaint(c);
-                        setIsDetailsOpen(true);
-                      }}
+                      departmentName={stats?.byDepartment[0]?.department}
+                      onSelectComplaint={openComplaint}
                       onOpenUpdateStatus={(c) => {
                         setUpdateStatusComplaint(c);
                         setIsUpdateStatusOpen(true);
@@ -311,11 +280,8 @@ export default function DashboardLayout() {
                     <AssignedComplaintsView
                       complaints={complaints}
                       defaultStatus="Resolved"
-                      departmentName={currentUser?.department}
-                      onSelectComplaint={(c) => {
-                        setSelectedComplaint(c);
-                        setIsDetailsOpen(true);
-                      }}
+                      departmentName={stats?.byDepartment[0]?.department}
+                      onSelectComplaint={openComplaint}
                       onOpenUpdateStatus={(c) => {
                         setUpdateStatusComplaint(c);
                         setIsUpdateStatusOpen(true);
@@ -326,11 +292,8 @@ export default function DashboardLayout() {
                     <AssignedComplaintsView
                       complaints={complaints}
                       defaultStatus="Rejected"
-                      departmentName={currentUser?.department}
-                      onSelectComplaint={(c) => {
-                        setSelectedComplaint(c);
-                        setIsDetailsOpen(true);
-                      }}
+                      departmentName={stats?.byDepartment[0]?.department}
+                      onSelectComplaint={openComplaint}
                       onOpenUpdateStatus={(c) => {
                         setUpdateStatusComplaint(c);
                         setIsUpdateStatusOpen(true);
@@ -338,7 +301,7 @@ export default function DashboardLayout() {
                     />
                   )}
                   {activeTab === 'profile' && (
-                    <StudentProfileView complaints={complaints} />
+                    <StudentProfileView complaints={complaints} department={stats?.byDepartment[0]?.department} />
                   )}
                 </>
               )}
@@ -346,28 +309,20 @@ export default function DashboardLayout() {
               {/* SUPER ADMIN VIEWS */}
               {role === 'super_admin' && (
                 <>
-                  {activeTab === 'overview' && (
+                  {activeTab === 'overview' && stats && (
                     <SuperAdminOverview
                       complaints={complaints}
-                      onNavigate={setActiveTab}
-                      onSelectComplaint={(c) => {
-                        setSelectedComplaint(c);
-                        setIsDetailsOpen(true);
-                      }}
-                      onRefresh={loadComplaints}
+                      summary={stats}
+                      onNavigate={navigate}
+                      onSelectComplaint={openComplaint}
+                      onRefresh={() => loadComplaints()}
                     />
                   )}
                   {activeTab === 'all-complaints' && (
                     <AllComplaintsView
                       complaints={complaints}
-                      onSelectComplaint={(c) => {
-                        setSelectedComplaint(c);
-                        setIsDetailsOpen(true);
-                      }}
-                      onOpenUpdateStatus={(c) => {
-                        setUpdateStatusComplaint(c);
-                        setIsUpdateStatusOpen(true);
-                      }}
+                      initialDepartment={directoryDepartment}
+                      onSelectComplaint={openComplaint}
                     />
                   )}
                   {activeTab === 'departments' && (
@@ -387,40 +342,37 @@ export default function DashboardLayout() {
                   )}
                 </>
               )}
+              {role !== 'student' && activeTab === 'overview' && stats && (
+                <StatsPanels stats={stats} recurring={recurring} error={recurringError} showDepartmentChart={role === 'dept_admin'} />
+              )}
             </>
           )}
         </main>
       </div>
 
       {/* Modals */}
-      <ComplaintDetailsModal
+      {isDetailsOpen && <ComplaintDetailsModal
         complaint={selectedComplaint}
         isOpen={isDetailsOpen}
         onClose={() => setIsDetailsOpen(false)}
         currentUser={currentUser}
-        onOpenFeedback={(c) => {
-          setFeedbackComplaint(c);
-          setIsFeedbackOpen(true);
+        onResponse={async (id, remark) => {
+          await complaintService.respond(id, remark);
+          setSelectedComplaint(await complaintService.getComplaintById(id));
         }}
         onOpenUpdateStatus={(c) => {
           setUpdateStatusComplaint(c);
           setIsUpdateStatusOpen(true);
         }}
-      />
+      />}
 
-      <UpdateStatusModal
+      {isUpdateStatusOpen && <UpdateStatusModal
         complaint={updateStatusComplaint}
         isOpen={isUpdateStatusOpen}
         onClose={() => setIsUpdateStatusOpen(false)}
         onSubmit={handleStatusUpdate}
-      />
+      />}
 
-      <FeedbackModal
-        complaint={feedbackComplaint}
-        isOpen={isFeedbackOpen}
-        onClose={() => setIsFeedbackOpen(false)}
-        onSubmit={handleFeedbackSubmit}
-      />
     </div>
   );
 }

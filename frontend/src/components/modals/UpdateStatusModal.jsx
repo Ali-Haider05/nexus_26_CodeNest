@@ -8,15 +8,15 @@ export default function UpdateStatusModal({
   onClose,
   onSubmit,
 }) {
-  if (!isOpen || !complaint) return null;
-
-  const [selectedStatus, setSelectedStatus] = useState(complaint.status || 'Under Review');
+  const [selectedStatus, setSelectedStatus] = useState(complaint?.status === 'Pending' ? 'In Progress' : complaint?.status);
   const [remarks, setRemarks] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const statusOptions = ['Under Review', 'In Progress', 'Resolved', 'Rejected'];
+  if (!isOpen || !complaint) return null;
+
+  const statusOptions = ['In Progress', 'Resolved', 'Rejected'];
 
   const handleSubmit = async (e) => {
     e.preventDefault();

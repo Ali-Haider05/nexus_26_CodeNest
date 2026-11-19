@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import StatusBadge from '../common/StatusBadge';
 import CategoryBadge from '../common/CategoryBadge';
-import PriorityBadge from '../common/PriorityBadge';
 import EmptyState from '../common/EmptyState';
 import { Search, Filter, Eye, ShieldCheck, Calendar, User, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -14,11 +13,10 @@ export default function AssignedComplaintsView({
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState(defaultStatus);
-  const [priorityFilter, setPriorityFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
-  const statuses = ['all', 'Pending', 'Under Review', 'In Progress', 'Resolved', 'Rejected'];
+  const statuses = ['all', 'Pending', 'In Progress', 'Resolved', 'Rejected'];
 
   const filtered = complaints.filter((c) => {
     const matchesSearch =
@@ -32,10 +30,7 @@ export default function AssignedComplaintsView({
     const matchesStatus =
       statusFilter === 'all' || (c.status && c.status.toLowerCase() === statusFilter.toLowerCase());
 
-    const matchesPriority =
-      priorityFilter === 'all' || (c.priority && c.priority.toLowerCase() === priorityFilter.toLowerCase());
-
-    return matchesSearch && matchesStatus && matchesPriority;
+    return matchesSearch && matchesStatus;
   });
 
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
@@ -73,27 +68,11 @@ export default function AssignedComplaintsView({
                 setSearchTerm(e.target.value);
                 setCurrentPage(1);
               }}
-              placeholder="Search by student name, roll number, ID, or keywords..."
+              placeholder="Search by student name, ID, or keywords..."
               className="w-full text-xs pl-10 pr-4 py-3 rounded-xl border border-[#E5E9E4] focus:outline-none focus:ring-2 focus:ring-[#247653]/20 focus:border-[#247653] bg-white text-[#24332D]"
             />
           </div>
 
-          <div>
-            <select
-              value={priorityFilter}
-              onChange={(e) => {
-                setPriorityFilter(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="w-full text-xs font-semibold py-3 px-3.5 rounded-xl border border-[#E5E9E4] focus:outline-none focus:ring-2 focus:ring-[#247653]/20 focus:border-[#247653] bg-white text-[#24332D]"
-            >
-              <option value="all">All Priorities</option>
-              <option value="Urgent">Urgent Only</option>
-              <option value="High">High Priority</option>
-              <option value="Medium">Medium Priority</option>
-              <option value="Low">Low Priority</option>
-            </select>
-          </div>
         </div>
 
         {/* Quick Status Pill Filter */}
@@ -132,7 +111,7 @@ export default function AssignedComplaintsView({
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-[#FAF9F5] border-b border-[#E5E9E4] text-[11px] font-bold uppercase tracking-wider text-[#77847D]">
-                  <th className="py-4 px-6">ID & Priority</th>
+                  <th className="py-4 px-6">ID</th>
                   <th className="py-4 px-6">Student Details</th>
                   <th className="py-4 px-6">Grievance Summary</th>
                   <th className="py-4 px-6">Date Received</th>
@@ -151,7 +130,6 @@ export default function AssignedComplaintsView({
                         <span className="font-mono font-bold text-[#153F35]">
                           {c.id}
                         </span>
-                        <PriorityBadge priority={c.priority} />
                       </div>
                     </td>
 

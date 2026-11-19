@@ -1,62 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { complaintService } from '../../services/complaintService';
-import NotificationPanel from '../notifications/NotificationPanel';
 import {
-  Bell,
   Menu,
-  Server,
-  Activity,
   GraduationCap,
   ShieldCheck,
   Building2,
-  RefreshCw,
 } from 'lucide-react';
 
-export default function Navbar({ onToggleSidebar, onSelectComplaint }) {
+export default function Navbar({ onToggleSidebar }) {
   const { currentUser, role, backendStatus, checkHealth } = useAuth();
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-
-  useEffect(() => {
-    loadNotifications();
-    const interval = setInterval(loadNotifications, 15000);
-    return () => clearInterval(interval);
-  }, [currentUser]);
-
-  const loadNotifications = async () => {
-    if (currentUser?.id) {
-      try {
-        const list = await complaintService.getNotifications(currentUser.id);
-        setNotifications(list);
-      } catch {
-        // ignore notification fetch failure
-      }
-    }
-  };
-
-  const handleMarkAllRead = async () => {
-    if (currentUser?.id) {
-      await complaintService.markAllNotificationsRead(currentUser.id);
-      loadNotifications();
-    }
-  };
-
-  const handleNotificationClick = async (notif) => {
-    await complaintService.markNotificationRead(notif.id);
-    loadNotifications();
-    setShowNotifications(false);
-    if (notif.complaintId && onSelectComplaint) {
-      try {
-        const c = await complaintService.getComplaintById(notif.complaintId);
-        onSelectComplaint(c);
-      } catch {
-        // ignore
-      }
-    }
-  };
-
-  const unreadCount = notifications.filter((n) => !n.read).length;
 
   const roleLabel =
     role === 'student'
@@ -136,37 +88,6 @@ export default function Navbar({ onToggleSidebar, onSelectComplaint }) {
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#F5F2E9] border border-[#E5E9E4] text-xs font-bold text-[#153F35] shadow-xs">
             <RoleIcon size={14} className="text-[#247653]" />
             <span className="max-w-[140px] truncate">{roleLabel}</span>
-          </div>
-
-          {/* Notifications Button */}
-          <div className="relative">
-            <button
-              onClick={() => setShowNotifications(!showNotifications)}
-              className="relative p-2 rounded-xl text-[#24332D] hover:bg-[#F5F2E9] border border-transparent hover:border-[#E5E9E4] transition-colors"
-              aria-label="Notifications"
-            >
-              <Bell size={18} />
-              {unreadCount > 0 && (
-                <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#F18B38] text-white text-[10px] font-bold flex items-center justify-center animate-bounce">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
-
-            {showNotifications && (
-              <>
-                <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setShowNotifications(false)}
-                />
-                <NotificationPanel
-                  notifications={notifications}
-                  onClose={() => setShowNotifications(false)}
-                  onNotificationClick={handleNotificationClick}
-                  onMarkAllRead={handleMarkAllRead}
-                />
-              </>
-            )}
           </div>
 
           {/* User Info & Avatar */}

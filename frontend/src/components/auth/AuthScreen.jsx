@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 
 export default function AuthScreen({ onLoginSuccess }) {
-  const { login, register, backendStatus, checkHealth } = useAuth();
+  const { login, register, backendStatus, checkHealth, sessionError } = useAuth();
   const [mode, setMode] = useState('login'); // 'login' | 'register'
 
   // Login form state
@@ -29,8 +29,6 @@ export default function AuthScreen({ onLoginSuccess }) {
   // Register form state (Student registration)
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
-  const [regStudentId, setRegStudentId] = useState('');
-  const [regDepartment, setRegDepartment] = useState('Computer Science');
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
   const [showRegPassword, setShowRegPassword] = useState(false);
@@ -69,7 +67,7 @@ export default function AuthScreen({ onLoginSuccess }) {
     setError('');
     setSuccessMessage('');
 
-    if (!regName.trim() || !regEmail.trim() || !regStudentId.trim() || !regPassword) {
+    if (!regName.trim() || !regEmail.trim() || !regPassword) {
       setError('Please complete all required fields.');
       return;
     }
@@ -79,8 +77,8 @@ export default function AuthScreen({ onLoginSuccess }) {
       return;
     }
 
-    if (regPassword.length < 6) {
-      setError('Password must be at least 6 characters long.');
+    if (regPassword.length < 8) {
+      setError('Password must be at least 8 characters long.');
       return;
     }
 
@@ -94,8 +92,6 @@ export default function AuthScreen({ onLoginSuccess }) {
       const res = await register({
         name: regName.trim(),
         email: regEmail.trim(),
-        studentId: regStudentId.trim(),
-        department: regDepartment,
         password: regPassword,
       });
       if (res.success) {
@@ -183,10 +179,10 @@ export default function AuthScreen({ onLoginSuccess }) {
           </div>
 
           <div className="p-6 sm:p-8 space-y-5">
-            {error && (
+            {(error || sessionError) && (
               <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-2">
                 <AlertCircle size={16} className="shrink-0" />
-                <span>{error}</span>
+                <span>{error || sessionError}</span>
               </div>
             )}
 
@@ -284,22 +280,6 @@ export default function AuthScreen({ onLoginSuccess }) {
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-[#77847D] uppercase tracking-wider mb-1.5">
-                      Roll / Registration No *
-                    </label>
-                    <div className="relative">
-                      <GraduationCap size={15} className="absolute left-3.5 top-3.5 text-[#77847D]" />
-                      <input
-                        type="text"
-                        required
-                        value={regStudentId}
-                        onChange={(e) => setRegStudentId(e.target.value)}
-                        placeholder="e.g. 2022-CS-045"
-                        className="w-full text-xs pl-10 pr-3 py-3 rounded-xl border border-[#E5E9E4] focus:outline-none focus:ring-2 focus:ring-[#247653]/20 focus:border-[#247653] bg-white font-mono text-[#24332D]"
-                      />
-                    </div>
-                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -320,21 +300,6 @@ export default function AuthScreen({ onLoginSuccess }) {
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-[#77847D] uppercase tracking-wider mb-1.5">
-                      Academic Department *
-                    </label>
-                    <select
-                      value={regDepartment}
-                      onChange={(e) => setRegDepartment(e.target.value)}
-                      className="w-full text-xs py-3 px-3 rounded-xl border border-[#E5E9E4] focus:outline-none focus:ring-2 focus:ring-[#247653]/20 focus:border-[#247653] bg-white font-semibold text-[#24332D]"
-                    >
-                      <option value="Computer Science">Computer Science</option>
-                      <option value="Software Engineering">Software Engineering</option>
-                      <option value="Artificial Intelligence">Artificial Intelligence</option>
-                      <option value="Information Technology">Information Technology</option>
-                    </select>
-                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -349,7 +314,7 @@ export default function AuthScreen({ onLoginSuccess }) {
                         required
                         value={regPassword}
                         onChange={(e) => setRegPassword(e.target.value)}
-                        placeholder="Min 6 characters"
+                        placeholder="Min 8 characters"
                         className="w-full text-xs pl-10 pr-9 py-3 rounded-xl border border-[#E5E9E4] focus:outline-none focus:ring-2 focus:ring-[#247653]/20 focus:border-[#247653] bg-white text-[#24332D]"
                       />
                       <button

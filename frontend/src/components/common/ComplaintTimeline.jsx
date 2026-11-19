@@ -1,10 +1,9 @@
 import React from 'react';
 import { STATUS_CONFIG } from '../../constants/theme';
-import { CheckCircle2, Clock, Eye, Wrench, XCircle, FileText, ArrowRight } from 'lucide-react';
+import { CheckCircle2, Clock, Wrench, XCircle, FileText, ArrowRight } from 'lucide-react';
 
 const stepIcons = {
   Submitted: FileText,
-  'Under Review': Eye,
   'In Progress': Wrench,
   Resolved: CheckCircle2,
   Rejected: XCircle,
@@ -14,19 +13,10 @@ export default function ComplaintTimeline({ history = [], currentStatus = 'Pendi
   // Canonical stages in life-cycle
   const isRejected = currentStatus === 'Rejected' || history.some((h) => h.status === 'Rejected');
   const stages = isRejected
-    ? ['Submitted', 'Under Review', 'Rejected']
-    : ['Submitted', 'Under Review', 'In Progress', 'Resolved'];
+    ? ['Submitted', 'Rejected']
+    : ['Submitted', 'In Progress', 'Resolved'];
 
-  const getStageIndex = (status) => {
-    if (status === 'Submitted') return 0;
-    if (status === 'Pending') return 0;
-    if (status === 'Under Review') return 1;
-    if (status === 'In Progress') return 2;
-    if (status === 'Resolved' || status === 'Rejected') return isRejected ? 2 : 3;
-    return 0;
-  };
-
-  const currentStageIndex = getStageIndex(currentStatus);
+  const currentStageIndex = Math.max(0, stages.indexOf(currentStatus));
 
   return (
     <div className="space-y-6">

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import StatusBadge from '../common/StatusBadge';
 import CategoryBadge from '../common/CategoryBadge';
-import PriorityBadge from '../common/PriorityBadge';
 import ComplaintTimeline from '../common/ComplaintTimeline';
 import EmptyState from '../common/EmptyState';
 import { Search, Clock, ArrowRight, ShieldCheck, MessageSquare, AlertCircle } from 'lucide-react';
@@ -9,7 +8,6 @@ import { Search, Clock, ArrowRight, ShieldCheck, MessageSquare, AlertCircle } fr
 export default function ComplaintTrackingView({
   complaints = [],
   onSelectComplaint,
-  onOpenFeedback,
 }) {
   const [selectedId, setSelectedId] = useState(complaints[0]?.id || null);
 
@@ -89,7 +87,6 @@ export default function ComplaintTrackingView({
                       {selectedComplaint.id}
                     </span>
                     <StatusBadge status={selectedComplaint.status} size="sm" />
-                    <PriorityBadge priority={selectedComplaint.priority} />
                   </div>
 
                   <span className="text-xs text-[#77847D] font-medium">
@@ -125,25 +122,6 @@ export default function ComplaintTrackingView({
                 />
               </div>
 
-              {/* Resolution Feedback CTA if Resolved */}
-              {selectedComplaint.status === 'Resolved' && !selectedComplaint.feedback && (
-                <div className="p-4 rounded-2xl bg-[#ECFDF5] border border-[#A7F3D0] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <h4 className="text-xs font-bold text-[#166534] uppercase tracking-wider">
-                      Issue Marked As Resolved
-                    </h4>
-                    <p className="text-xs text-[#166534]/80">
-                      Please let the department know if the resolution resolved your concern.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => onOpenFeedback(selectedComplaint)}
-                    className="px-4 py-2 rounded-xl bg-[#247653] hover:bg-[#194D40] text-white text-xs font-bold shadow-xs transition-colors shrink-0"
-                  >
-                    Leave Resolution Rating
-                  </button>
-                </div>
-              )}
             </div>
           )}
         </div>

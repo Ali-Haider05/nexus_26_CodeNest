@@ -7,16 +7,15 @@ import { MessageSquare, Star, CheckCircle2, Building, Calendar, ArrowRight } fro
 export default function FeedbackResponsesView({
   complaints = [],
   onSelectComplaint,
-  onOpenFeedback,
 }) {
-  const resolvedOrWithRemarks = complaints.filter((c) => c.remarks || c.status === 'Resolved');
+  const resolvedOrWithRemarks = complaints.filter((c) => c.responses.length);
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h2 className="text-xl sm:text-2xl font-extrabold text-[#24332D]">Departmental Responses & Feedback</h2>
+        <h2 className="text-xl sm:text-2xl font-extrabold text-[#24332D]">Departmental Responses</h2>
         <p className="text-xs sm:text-sm text-[#77847D]">
-          Review official administrator remarks, action outcomes, and share your feedback rating
+          Review official administrator remarks and action outcomes
         </p>
       </div>
 
@@ -29,7 +28,6 @@ export default function FeedbackResponsesView({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {resolvedOrWithRemarks.map((c) => {
-            const hasFeedback = !!c.feedback;
             return (
               <div
                 key={c.id}
@@ -70,33 +68,6 @@ export default function FeedbackResponsesView({
                   )}
 
                   {/* Feedback Status / Stars */}
-                  {hasFeedback && (
-                    <div className="p-3 rounded-xl bg-[#ECFDF5] border border-[#A7F3D0] space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-[#166534] uppercase tracking-wider">
-                          Your Rating
-                        </span>
-                        <div className="flex items-center gap-1">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <Star
-                              key={star}
-                              size={13}
-                              className={
-                                star <= c.feedback.rating
-                                  ? 'text-[#F18B38] fill-[#F18B38]'
-                                  : 'text-gray-300'
-                              }
-                            />
-                          ))}
-                        </div>
-                      </div>
-                      {c.feedback.comment && (
-                        <p className="text-xs text-[#166534] italic">
-                          "{c.feedback.comment}"
-                        </p>
-                      )}
-                    </div>
-                  )}
                 </div>
 
                 {/* Footer Buttons */}
@@ -108,15 +79,6 @@ export default function FeedbackResponsesView({
                     View Details <ArrowRight size={13} />
                   </button>
 
-                  {c.status === 'Resolved' && !hasFeedback && (
-                    <button
-                      onClick={() => onOpenFeedback(c)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#F18B38] hover:bg-[#d97728] text-white text-xs font-bold shadow-xs transition-colors"
-                    >
-                      <Star size={13} />
-                      Rate Resolution
-                    </button>
-                  )}
                 </div>
               </div>
             );

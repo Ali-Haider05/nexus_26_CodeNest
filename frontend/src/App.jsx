@@ -21,7 +21,7 @@ function MainApp() {
     );
   }
 
-  if (!currentUser) {
+  if (!currentUser || !["student", "dept_admin", "super_admin"].includes(currentUser.role)) {
     return <AuthScreen />;
   }
 

@@ -1,44 +1,46 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import StatusBadge from '../common/StatusBadge';
-import CategoryBadge from '../common/CategoryBadge';
-import PriorityBadge from '../common/PriorityBadge';
+import { complaintService } from '../../services/complaintService';
 import EmptyState from '../common/EmptyState';
 import { DEPARTMENTS, CATEGORY_CONFIG } from '../../constants/theme';
-import { Search, Filter, Eye, Download, ShieldCheck, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Eye, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function AllComplaintsView({
   complaints = [],
   onSelectComplaint,
-  onOpenUpdateStatus,
+  initialDepartment = "all",
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [deptFilter, setDeptFilter] = useState('all');
+  const [deptFilter, setDeptFilter] = useState(initialDepartment);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
-  const filtered = complaints.filter((c) => {
-    const matchesSearch =
-      searchTerm === '' ||
-      c.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (c.studentName && c.studentName.toLowerCase().includes(searchTerm.toLowerCase()));
+  const [filtered, setFiltered] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const selectedDepartment = complaints.find((complaint) => complaint.department === deptFilter)?.department_id;
 
-    const matchesStatus =
-      statusFilter === 'all' ||
-      (c.status && c.status.toLowerCase() === statusFilter.toLowerCase());
-
-    const matchesDept =
-      deptFilter === 'all' ||
-      (c.department && c.department.toLowerCase() === deptFilter.toLowerCase());
-
-    const matchesCat =
-      categoryFilter === 'all' || c.category === categoryFilter;
-
-    return matchesSearch && matchesStatus && matchesDept && matchesCat;
-  });
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError('');
+    const debounce = setTimeout(async () => {
+      try {
+        const rows = deptFilter !== 'all' && !selectedDepartment ? [] : await complaintService.getComplaints({
+          role: 'super_admin', department_id: selectedDepartment, status: statusFilter,
+          category: categoryFilter, search: searchTerm,
+        });
+        if (active) setFiltered(rows);
+      } catch (err) {
+        if (active) { setError(err.message); setFiltered([]); }
+      } finally {
+        if (active) setLoading(false);
+      }
+    }, 250);
+    return () => { active = false; clearTimeout(debounce); };
+  }, [searchTerm, statusFilter, deptFilter, selectedDepartment, categoryFilter]);
 
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
   const paginatedList = filtered.slice(
@@ -50,16 +52,14 @@ export default function AllComplaintsView({
   const handleExportCSV = () => {
     if (filtered.length === 0) return;
 
-    const headers = ['ID', 'Title', 'Category', 'Department', 'Student', 'RollNo', 'Status', 'Priority', 'Created'];
+    const headers = ['ID', 'Title', 'Category', 'Department', 'Student', 'Status', 'Created'];
     const rows = filtered.map((c) => [
       c.id,
       `"${(c.title || '').replace(/"/g, '""')}"`,
       c.category,
       c.department,
       `"${c.studentName || ''}"`,
-      c.studentRollNo || '',
       c.status,
-      c.priority,
       c.createdAt || c.created_at || '',
     ]);
 
@@ -88,7 +88,7 @@ export default function AllComplaintsView({
 
         <button
           onClick={handleExportCSV}
-          disabled={filtered.length === 0}
+          disabled={loading || filtered.length === 0}
           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#153F35] hover:bg-[#194D40] text-white text-xs font-bold shadow-xs transition-colors shrink-0 disabled:opacity-50"
         >
           <Download size={15} />
@@ -109,7 +109,7 @@ export default function AllComplaintsView({
                 setSearchTerm(e.target.value);
                 setCurrentPage(1);
               }}
-              placeholder="Search ID, title, student..."
+              placeholder="Search title or description..."
               className="w-full text-xs pl-10 pr-3.5 py-3 rounded-xl border border-[#E5E9E4] focus:outline-none focus:ring-2 focus:ring-[#247653]/20 focus:border-[#247653] bg-white text-[#24332D]"
             />
           </div>
@@ -117,6 +117,7 @@ export default function AllComplaintsView({
           {/* Department Filter */}
           <div>
             <select
+              aria-label="Filter by department"
               value={deptFilter}
               onChange={(e) => {
                 setDeptFilter(e.target.value);
@@ -136,6 +137,7 @@ export default function AllComplaintsView({
           {/* Category Filter */}
           <div>
             <select
+              aria-label="Filter by category"
               value={categoryFilter}
               onChange={(e) => {
                 setCategoryFilter(e.target.value);
@@ -155,6 +157,7 @@ export default function AllComplaintsView({
           {/* Status Filter */}
           <div>
             <select
+              aria-label="Filter by status"
               value={statusFilter}
               onChange={(e) => {
                 setStatusFilter(e.target.value);
@@ -164,7 +167,6 @@ export default function AllComplaintsView({
             >
               <option value="all">All Statuses</option>
               <option value="Pending">Pending</option>
-              <option value="Under Review">Under Review</option>
               <option value="In Progress">In Progress</option>
               <option value="Resolved">Resolved</option>
               <option value="Rejected">Rejected</option>
@@ -174,7 +176,7 @@ export default function AllComplaintsView({
       </div>
 
       {/* Results Table */}
-      {filtered.length === 0 ? (
+      {loading ? <p role="status" className="text-sm">Loading complaints?</p> : error ? <p role="alert" className="text-sm text-red-700">{error}</p> : filtered.length === 0 ? (
         <EmptyState
           title="No complaints found"
           description={
@@ -189,7 +191,7 @@ export default function AllComplaintsView({
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-[#FAF9F5] border-b border-[#E5E9E4] text-[11px] font-bold uppercase tracking-wider text-[#77847D]">
-                  <th className="py-4 px-6">ID & Priority</th>
+                  <th className="py-4 px-6">ID</th>
                   <th className="py-4 px-6">Grievance Subject</th>
                   <th className="py-4 px-6">Department</th>
                   <th className="py-4 px-6">Student</th>
@@ -209,7 +211,6 @@ export default function AllComplaintsView({
                         <span className="font-mono font-bold text-[#153F35]">
                           {c.id}
                         </span>
-                        <PriorityBadge priority={c.priority} />
                       </div>
                     </td>
 
@@ -257,13 +258,6 @@ export default function AllComplaintsView({
                         >
                           <Eye size={13} />
                           Details
-                        </button>
-                        <button
-                          onClick={() => onOpenUpdateStatus(c)}
-                          className="px-3 py-1.5 rounded-lg bg-[#247653] hover:bg-[#194D40] text-xs font-bold text-white shadow-xs transition-colors inline-flex items-center gap-1"
-                        >
-                          <ShieldCheck size={13} />
-                          Update
                         </button>
                       </div>
                     </td>

@@ -77,22 +77,6 @@ export default function AnalyticsReportsView({ complaints = [] }) {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-5 border border-[#E5E9E4] shadow-xs space-y-1">
-          <p className="text-xs font-bold text-[#77847D] uppercase tracking-wider">
-            Average Student Satisfaction
-          </p>
-          <div className="flex items-baseline gap-2">
-            <h3 className="text-2xl font-black text-[#F18B38]">
-              {stats.avgRating ? `${stats.avgRating} / 5.0` : 'No ratings yet'}
-            </h3>
-            {stats.ratedCount > 0 && (
-              <span className="text-xs font-semibold text-[#77847D]">
-                ({stats.ratedCount} reviews)
-              </span>
-            )}
-          </div>
-          <p className="text-[11px] text-[#77847D] mt-1">Calculated from verified student feedback</p>
-        </div>
 
         <div className="bg-white rounded-2xl p-5 border border-[#E5E9E4] shadow-xs space-y-1">
           <p className="text-xs font-bold text-[#77847D] uppercase tracking-wider">
@@ -100,7 +84,7 @@ export default function AnalyticsReportsView({ complaints = [] }) {
           </p>
           <div className="flex items-baseline gap-2">
             <h3 className="text-2xl font-black text-[#D97706]">
-              {stats.pending + stats.underReview + stats.inProgress}
+              {stats.pending + stats.inProgress}
             </h3>
             <span className="text-xs font-semibold text-[#77847D]">Complaints</span>
           </div>

@@ -2,7 +2,6 @@ import React from 'react';
 import StatCard from '../common/StatCard';
 import StatusBadge from '../common/StatusBadge';
 import CategoryBadge from '../common/CategoryBadge';
-import PriorityBadge from '../common/PriorityBadge';
 import {
   FileText,
   Clock,
@@ -24,7 +23,7 @@ export default function StudentOverview({
   const total = complaints.length;
   const pending = complaints.filter((c) => c.status === 'Pending').length;
   const inProgress = complaints.filter(
-    (c) => c.status === 'In Progress' || c.status === 'Under Review'
+    (c) => c.status === 'In Progress'
   ).length;
   const resolved = complaints.filter((c) => c.status === 'Resolved').length;
 
@@ -135,7 +134,6 @@ export default function StudentOverview({
                         {c.id}
                       </span>
                       <StatusBadge status={c.status} size="xs" />
-                      <PriorityBadge priority={c.priority} />
                     </div>
                     <h4 className="text-xs font-bold text-[#24332D] group-hover:text-[#247653] transition-colors truncate">
                       {c.title}

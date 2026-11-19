@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { MAX_IMAGE_BYTES } from '../../services/complaintService';
 import { CATEGORY_CONFIG, getDepartmentForCategory } from '../../constants/theme';
 import {
   Send,
@@ -31,7 +32,6 @@ export default function ComplaintSubmitForm({ onSubmitSuccess, onCancel, current
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Laboratories & IT Facilities');
-  const [priority, setPriority] = useState('Medium');
 
   // Original image file upload state
   const [imageFile, setImageFile] = useState(null);
@@ -59,13 +59,12 @@ export default function ComplaintSubmitForm({ onSubmitSuccess, onCancel, current
       return;
     }
 
-    // Validate size (max 10MB)
-    const maxSize = 10 * 1024 * 1024;
-    if (file.size > maxSize) {
-      setError('Photograph size exceeds 10MB. Please select a smaller image file.');
+    if (file.size > MAX_IMAGE_BYTES) {
+      setError('Photograph size exceeds 1.5 MB. Please select a smaller image file.');
       return;
     }
 
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
     setImageFile(file);
     const preview = URL.createObjectURL(file);
     setImagePreview(preview);
@@ -115,7 +114,6 @@ export default function ComplaintSubmitForm({ onSubmitSuccess, onCancel, current
         title: title.trim(),
         description: description, // EXACT STUDENT TEXT PRESERVED
         category,
-        priority,
         imageFile: imageFile || null, // ORIGINAL PHOTOGRAPH
       });
 
@@ -197,10 +195,13 @@ export default function ComplaintSubmitForm({ onSubmitSuccess, onCancel, current
               const isSelected = category === catKey;
 
               return (
-                <div
+                <button
                   key={catKey}
+                  type="button"
+                  aria-label={cfg.name}
+                  aria-pressed={isSelected}
                   onClick={() => setCategory(catKey)}
-                  className={`p-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                  className={`p-4 rounded-2xl border-2 cursor-pointer text-left transition-all ${
                     isSelected
                       ? 'border-[#247653] bg-[#ECFDF5]/50 ring-2 ring-[#247653]/15 shadow-xs'
                       : 'border-[#E5E9E4] bg-white hover:border-[#CCD5CE] hover:bg-[#FAF9F5]'
@@ -218,7 +219,7 @@ export default function ComplaintSubmitForm({ onSubmitSuccess, onCancel, current
                   <p className="text-[11px] text-[#77847D] line-clamp-2 leading-snug">
                     {cfg.description}
                   </p>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -238,9 +239,9 @@ export default function ComplaintSubmitForm({ onSubmitSuccess, onCancel, current
           </div>
         </div>
 
-        {/* 2. Title & Priority */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="md:col-span-2">
+        {/* Complaint title */}
+        <div className="grid gap-4">
+          <div >
             <label className="block text-xs font-bold text-[#77847D] uppercase tracking-wider mb-1.5">
               2. Complaint Title / Subject *
             </label>
@@ -254,21 +255,6 @@ export default function ComplaintSubmitForm({ onSubmitSuccess, onCancel, current
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-[#77847D] uppercase tracking-wider mb-1.5">
-              Priority Level
-            </label>
-            <select
-              value={priority}
-              onChange={(e) => setPriority(e.target.value)}
-              className="w-full text-xs font-bold p-3.5 rounded-xl border border-[#E5E9E4] focus:outline-none focus:ring-2 focus:ring-[#247653]/20 focus:border-[#247653] bg-white text-[#24332D]"
-            >
-              <option value="Low">Low - Normal Inquiry</option>
-              <option value="Medium">Medium - Regular Priority</option>
-              <option value="High">High - Impairing Studies</option>
-              <option value="Urgent">Urgent - Safety / Exam Critical</option>
-            </select>
-          </div>
         </div>
 
         {/* 3. Original Description (Preserved verbatim) */}
@@ -324,7 +310,7 @@ export default function ComplaintSubmitForm({ onSubmitSuccess, onCancel, current
                 Click to browse or drag & drop a photo from your device
               </p>
               <p className="text-[11px] text-[#77847D] mt-1">
-                Supports PNG, JPG, or WebP (up to 10MB)
+                Supports PNG, JPG, or WebP (up to 1.5 MB)
               </p>
             </div>
           ) : (

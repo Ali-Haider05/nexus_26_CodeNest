@@ -4,32 +4,35 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authService } from '../services/authService';
 import { api } from '../services/api';
-import { getStoredCurrentUser, saveStoredCurrentUser } from '../services/storage';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [sessionError, setSessionError] = useState('');
   const [backendStatus, setBackendStatus] = useState({ isConnected: false, checking: true });
 
   useEffect(() => {
-    // Check if user has an active stored session from previous real login
-    const stored = authService.getCurrentUser();
-    if (stored) {
-      setCurrentUser(stored);
-    }
-
-    // Check backend health
+    let active = true;
     checkHealth();
-    setLoading(false);
+    if (api.getToken()) {
+      authService.getCurrentUser()
+        .then((user) => { if (active) setCurrentUser(user); })
+        .catch((error) => { if (active) setSessionError(error.message); })
+        .finally(() => { if (active) setLoading(false); });
+    } else {
+      setLoading(false);
+    }
 
     // Listen for 401 Unauthorized events from api.js
     const handleUnauthorized = () => {
       setCurrentUser(null);
+      setSessionError("Your session expired. Please sign in again.");
     };
     window.addEventListener('campusconnect_unauthorized', handleUnauthorized);
     return () => {
+      active = false;
       window.removeEventListener('campusconnect_unauthorized', handleUnauthorized);
     };
   }, []);
@@ -43,6 +46,7 @@ export function AuthProvider({ children }) {
   const login = async (credentials) => {
     const res = await authService.login(credentials);
     if (res.success) {
+      setSessionError('');
       setCurrentUser(res.user);
     }
     return res;
@@ -51,6 +55,7 @@ export function AuthProvider({ children }) {
   const register = async (regData) => {
     const res = await authService.register(regData);
     if (res.success) {
+      setSessionError('');
       setCurrentUser(res.user);
     }
     return res;
@@ -61,12 +66,6 @@ export function AuthProvider({ children }) {
     setCurrentUser(null);
   };
 
-  // Update user state throughout the application (e.g. after profile picture update)
-  const updateUser = (updatedUser) => {
-    saveStoredCurrentUser(updatedUser);
-    setCurrentUser(updatedUser);
-  };
-
   return (
     <AuthContext.Provider
       value={{
@@ -75,7 +74,7 @@ export function AuthProvider({ children }) {
         login,
         register,
         logout,
-        updateUser,
+        sessionError,
         backendStatus,
         checkHealth,
         loading,

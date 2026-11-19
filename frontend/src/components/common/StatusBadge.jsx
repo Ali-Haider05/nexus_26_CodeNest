@@ -1,10 +1,9 @@
 import React from 'react';
 import { STATUS_CONFIG } from '../../constants/theme';
-import { Clock, Eye, Wrench, CheckCircle2, XCircle } from 'lucide-react';
+import { Clock, Wrench, CheckCircle2, XCircle } from 'lucide-react';
 
 const icons = {
   Pending: Clock,
-  'Under Review': Eye,
   'In Progress': Wrench,
   Resolved: CheckCircle2,
   Rejected: XCircle,

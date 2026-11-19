@@ -16,7 +16,6 @@ export const analyticsService = {
 
     const total = list.length;
     const pending = list.filter((c) => c.status === 'Pending').length;
-    const underReview = list.filter((c) => c.status === 'Under Review').length;
     const inProgress = list.filter((c) => c.status === 'In Progress').length;
     const resolved = list.filter((c) => c.status === 'Resolved').length;
     const rejected = list.filter((c) => c.status === 'Rejected').length;
@@ -33,7 +32,6 @@ export const analyticsService = {
     return {
       total,
       pending,
-      underReview,
       inProgress,
       resolved,
       rejected,
@@ -55,7 +53,7 @@ export const analyticsService = {
       const resolved = deptComplaints.filter((c) => c.status === 'Resolved').length;
       const pending = deptComplaints.filter((c) => c.status === 'Pending').length;
       const inProgress = deptComplaints.filter(
-        (c) => c.status === 'In Progress' || c.status === 'Under Review'
+        (c) => c.status === 'In Progress'
       ).length;
       const rejected = deptComplaints.filter((c) => c.status === 'Rejected').length;
 
@@ -96,7 +94,6 @@ export const analyticsService = {
 
     const statuses = [
       { name: 'Pending', count: 0, color: '#D97706' },
-      { name: 'Under Review', count: 0, color: '#7C5CC4' },
       { name: 'In Progress', count: 0, color: '#2563EB' },
       { name: 'Resolved', count: 0, color: '#16834A' },
       { name: 'Rejected', count: 0, color: '#DC4545' },

@@ -2,9 +2,7 @@ import React, { useState } from 'react';
 import StatCard from '../common/StatCard';
 import StatusBadge from '../common/StatusBadge';
 import CategoryBadge from '../common/CategoryBadge';
-import PriorityBadge from '../common/PriorityBadge';
 import EmptyState from '../common/EmptyState';
-import { analyticsService } from '../../services/analyticsService';
 import { DEPARTMENTS, CATEGORY_CONFIG } from '../../constants/theme';
 import {
   FolderKanban,
@@ -37,13 +35,15 @@ import {
 
 export default function SuperAdminOverview({
   complaints = [],
+  summary,
   onNavigate,
   onSelectComplaint,
   onRefresh,
 }) {
   // Compute accurate metrics dynamically from real complaints
-  const stats = analyticsService.getStats(complaints);
-  const departmentData = analyticsService.getDepartmentComparisonData(complaints);
+  const { totals } = summary;
+  const stats = { ...totals, inProgress: totals.in_progress, resolutionRate: totals.total ? Math.round(totals.resolved / totals.total * 100) : 0 };
+  const departmentData = summary.byDepartment;
 
   // Recent Campus Grievances filtering and pagination state
   const [searchTerm, setSearchTerm] = useState('');
@@ -53,7 +53,8 @@ export default function SuperAdminOverview({
   const pageSize = 6;
 
   // Filter real complaints for Recent Campus Grievances section
-  const filteredGrievances = complaints.filter((c) => {
+  const latest = summary.recent.map(({ id }) => complaints.find((complaint) => complaint.id === String(id))).filter(Boolean);
+  const filteredGrievances = latest.filter((c) => {
     const matchesSearch =
       searchTerm === '' ||
       c.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -108,7 +109,7 @@ export default function SuperAdminOverview({
       </div>
 
       {/* University-Wide Metric Counters (Real Data) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
         <StatCard
           title="Total Received"
           value={stats.total}
@@ -125,15 +126,6 @@ export default function SuperAdminOverview({
           color="#D97706"
           bgColor="#FEF3C7"
           subtitle="Awaiting triage"
-          onClick={() => onNavigate('all-complaints')}
-        />
-        <StatCard
-          title="Under Review"
-          value={stats.underReview}
-          icon={Eye}
-          color="#7C5CC4"
-          bgColor="#F3E8FF"
-          subtitle="Department assessment"
           onClick={() => onNavigate('all-complaints')}
         />
         <StatCard
@@ -202,7 +194,7 @@ export default function SuperAdminOverview({
             >
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E9E4" />
               <XAxis
-                dataKey="shortName"
+                dataKey="department"
                 tick={{ fill: '#77847D', fontSize: 12, fontWeight: 600 }}
                 axisLine={{ stroke: '#E5E9E4' }}
               />
@@ -220,9 +212,7 @@ export default function SuperAdminOverview({
                   fontSize: '12px',
                 }}
               />
-              <Bar dataKey="total" name="Total Complaints" fill="#153F35" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="resolved" name="Resolved" fill="#16834A" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="pending" name="Pending" fill="#D97706" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="count" name="Total Complaints" fill="#153F35" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -307,7 +297,6 @@ export default function SuperAdminOverview({
             >
               <option value="all">All Statuses</option>
               <option value="Pending">Pending</option>
-              <option value="Under Review">Under Review</option>
               <option value="In Progress">In Progress</option>
               <option value="Resolved">Resolved</option>
               <option value="Rejected">Rejected</option>
@@ -349,7 +338,6 @@ export default function SuperAdminOverview({
                         {c.id}
                       </span>
                       <StatusBadge status={c.status} size="xs" />
-                      <PriorityBadge priority={c.priority} />
                       <span className="text-[11px] font-semibold text-[#153F35] bg-white px-2 py-0.5 rounded border border-[#E5E9E4]">
                         {c.department || 'General Administration'}
                       </span>
