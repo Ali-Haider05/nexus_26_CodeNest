@@ -51,4 +51,37 @@ router.get('/', authenticate, authorize('dept_admin', 'super_admin'), async (req
   res.json({ ...stats, byStatus });
 });
 
+router.get('/recurring', authenticate, authorize('dept_admin', 'super_admin'), async (req, res) => {
+  const { role, department_id } = req.user;
+  const { rows: [stats] } = await pool.query(
+    `WITH visible_complaints AS (
+       SELECT category, title, created_at
+       FROM complaints
+       WHERE $1::boolean OR department_id = $2::int
+     ), top_titles AS (
+       SELECT category, LOWER(TRIM(title)) AS title, COUNT(*) AS count,
+              MAX(created_at) AS latest_created_at
+       FROM visible_complaints
+       GROUP BY category, LOWER(TRIM(title))
+       ORDER BY count DESC, latest_created_at DESC NULLS LAST, category, title
+       LIMIT 5
+     ), category_counts AS (
+       SELECT category, COUNT(*) FILTER (
+         WHERE created_at BETWEEN NOW() - INTERVAL '7 days' AND NOW()
+       ) AS count
+       FROM visible_complaints
+       GROUP BY category
+     )
+     SELECT
+       (SELECT COALESCE(json_agg(t ORDER BY t.count DESC, t.latest_created_at DESC NULLS LAST,
+                                           t.category, t.title), '[]'::json)
+        FROM top_titles t) AS recurring,
+       (SELECT COALESCE(json_agg(c ORDER BY c.category), '[]'::json)
+        FROM category_counts c) AS "byCategoryLast7Days"`,
+    [role === 'super_admin', department_id ?? null],
+  );
+
+  res.json(stats);
+});
+
 module.exports = router;
