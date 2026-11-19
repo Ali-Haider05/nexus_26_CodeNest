@@ -5,7 +5,7 @@ const pool = require('../db');
 const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
-const userFields = 'id, name, email, role, department_id';
+const userFields = 'id, name, email, role, department_id, avatar_url';
 
 function signToken({ id, role, department_id }) {
   return jwt.sign({ id, role, department_id }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -60,6 +60,21 @@ router.get('/me', authenticate, async (req, res) => {
   const { rows: [user] } = await pool.query(
     `SELECT ${userFields} FROM users WHERE id = $1`,
     [req.user.id],
+  );
+  if (!user) return res.status(401).json({ message: 'User no longer exists' });
+  res.json(user);
+});
+
+router.patch('/me/avatar', authenticate, async (req, res) => {
+  const { avatar_url } = req.body ?? {};
+  if (avatar_url !== null && (typeof avatar_url !== 'string' || avatar_url.length > 300000 ||
+      !/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(avatar_url))) {
+    return res.status(400).json({ message: 'Use a JPEG, PNG, or WebP data URL of at most 300,000 characters, or null' });
+  }
+
+  const { rows: [user] } = await pool.query(
+    `UPDATE users SET avatar_url = $1 WHERE id = $2 RETURNING ${userFields}`,
+    [avatar_url, req.user.id],
   );
   if (!user) return res.status(401).json({ message: 'User no longer exists' });
   res.json(user);
