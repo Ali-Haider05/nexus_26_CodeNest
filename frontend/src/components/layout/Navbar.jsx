@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 
 export default function Navbar({ onToggleSidebar }) {
-  const { currentUser, role, backendStatus, checkHealth } = useAuth();
+  const { currentUser, role } = useAuth();
 
   const roleLabel =
     role === 'student'
@@ -59,30 +59,6 @@ export default function Navbar({ onToggleSidebar }) {
 
         {/* Center / Right controls */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Neon / Backend Integration Status */}
-          <div
-            onClick={checkHealth}
-            title={
-              backendStatus.isConnected
-                ? 'Backend PostgreSQL server connected'
-                : 'Connecting to Backend server'
-            }
-            className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer border transition-all hover:opacity-90"
-            style={{
-              backgroundColor: backendStatus.isConnected ? '#ECFDF5' : '#FFF7ED',
-              borderColor: backendStatus.isConnected ? '#A7F3D0' : '#FFEDD5',
-              color: backendStatus.isConnected ? '#166534' : '#9A3412',
-            }}
-          >
-            <span
-              className={`w-2 h-2 rounded-full ${
-                backendStatus.isConnected ? 'bg-[#16834A] animate-pulse' : 'bg-[#D97706]'
-              }`}
-            />
-            <span className="text-[11px]">
-              {backendStatus.isConnected ? 'Backend Live' : 'Backend Connecting'}
-            </span>
-          </div>
 
           {/* User Role Badge */}
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#F5F2E9] border border-[#E5E9E4] text-xs font-bold text-[#153F35] shadow-xs">
@@ -93,9 +69,9 @@ export default function Navbar({ onToggleSidebar }) {
           {/* User Info & Avatar */}
           <div className="flex items-center gap-2 pl-2 border-l border-[#E5E9E4]">
             <div className="w-8 h-8 rounded-full bg-[#247653] text-white font-bold text-xs flex items-center justify-center shadow-xs overflow-hidden shrink-0 border border-[#A7F3D0]">
-              {currentUser?.avatar || currentUser?.profilePicture ? (
+              {currentUser?.avatar_url ? (
                 <img
-                  src={currentUser.avatar || currentUser.profilePicture}
+                  src={currentUser.avatar_url}
                   alt={currentUser.name}
                   className="w-full h-full object-cover"
                 />

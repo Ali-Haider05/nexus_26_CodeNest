@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import {
   LogIn,
@@ -13,12 +13,11 @@ import {
   GraduationCap,
   Building,
   ShieldCheck,
-  Server,
   RefreshCw,
 } from 'lucide-react';
 
 export default function AuthScreen({ onLoginSuccess }) {
-  const { login, register, backendStatus, checkHealth, sessionError } = useAuth();
+  const { login, register, sessionError } = useAuth();
   const [mode, setMode] = useState('login'); // 'login' | 'register'
 
   // Login form state
@@ -34,6 +33,13 @@ export default function AuthScreen({ onLoginSuccess }) {
   const [showRegPassword, setShowRegPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
+  const [showWakeMessage, setShowWakeMessage] = useState(false);
+
+  useEffect(() => {
+    if (!loading) return;
+    const timer = setTimeout(() => setShowWakeMessage(true), 5000);
+    return () => clearTimeout(timer);
+  }, [loading]);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -57,6 +63,7 @@ export default function AuthScreen({ onLoginSuccess }) {
     } catch (err) {
       setError(err.message || 'Login failed. Please check your credentials.');
     } finally {
+      setShowWakeMessage(false);
       setLoading(false);
     }
   };
@@ -103,6 +110,7 @@ export default function AuthScreen({ onLoginSuccess }) {
     } catch (err) {
       setError(err.message || 'Registration failed. Please try again.');
     } finally {
+      setShowWakeMessage(false);
       setLoading(false);
     }
   };
@@ -121,25 +129,6 @@ export default function AuthScreen({ onLoginSuccess }) {
           <p className="text-xs sm:text-sm text-[#77847D] mt-1 font-medium">
             Smart Campus Complaint & Feedback Management System
           </p>
-
-          {/* Backend Connection Indicator */}
-          <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold border bg-white shadow-2xs">
-            <span
-              className={`w-2 h-2 rounded-full ${
-                backendStatus.isConnected ? 'bg-[#16834A] animate-pulse' : 'bg-[#D97706]'
-              }`}
-            />
-            <span className="text-[#24332D]">
-              {backendStatus.isConnected ? 'Backend API Connected' : 'Connecting to Backend Server...'}
-            </span>
-            <button
-              onClick={checkHealth}
-              title="Refresh connection status"
-              className="text-[#77847D] hover:text-[#153F35] ml-1"
-            >
-              <RefreshCw size={11} className={backendStatus.checking ? 'animate-spin' : ''} />
-            </button>
-          </div>
         </div>
 
         {/* Main Auth Card */}
@@ -258,6 +247,11 @@ export default function AuthScreen({ onLoginSuccess }) {
                     </>
                   )}
                 </button>
+                {loading && showWakeMessage && (
+                  <p role="status" className="text-center text-xs text-[#77847D]">
+                    Server is waking up, please wait up to a minute...
+                  </p>
+                )}
               </form>
             ) : (
               /* STUDENT REGISTRATION FORM */
@@ -361,6 +355,11 @@ export default function AuthScreen({ onLoginSuccess }) {
                     </>
                   )}
                 </button>
+                {loading && showWakeMessage && (
+                  <p role="status" className="text-center text-xs text-[#77847D]">
+                    Server is waking up, please wait up to a minute...
+                  </p>
+                )}
               </form>
             )}
           </div>

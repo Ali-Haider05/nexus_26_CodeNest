@@ -7,17 +7,22 @@ export const api = {
     if (token) localStorage.setItem(tokenKey, token);
     else localStorage.removeItem(tokenKey);
   },
-  async request(path, { method = 'GET', body, authenticated = true } = {}) {
+  async request(path, { method = 'GET', body, authenticated = true, waitForWakeUp = false } = {}) {
     const token = authenticated && this.getToken();
     const headers = { Accept: 'application/json' };
     if (token) headers.Authorization = 'Bearer ' + token;
     if (body !== undefined) headers['Content-Type'] = 'application/json';
+    const startedAt = Date.now();
     let response;
     try {
       response = await fetch(API_URL + path, {
-        method, headers, body: JSON.stringify(body), signal: AbortSignal.timeout(20000),
+        method, headers, body: JSON.stringify(body), signal: AbortSignal.timeout(waitForWakeUp ? 60000 : 20000),
       });
     } catch (error) {
+      if (waitForWakeUp) {
+        const remaining = 60000 - (Date.now() - startedAt);
+        if (remaining > 0) await new Promise((resolve) => setTimeout(resolve, remaining));
+      }
       throw new Error(error.name === 'TimeoutError' ? 'The server took too long to respond.' : 'Could not reach the server.');
     }
     const data = await response.json().catch(() => null);
@@ -34,13 +39,5 @@ export const api = {
       throw Object.assign(new Error(message), { status: response.status });
     }
     return data;
-  },
-  async checkBackendHealth() {
-    try {
-      const data = await this.request('/health');
-      return { isConnected: data?.status === 'ok', data };
-    } catch {
-      return { isConnected: false };
-    }
   },
 };

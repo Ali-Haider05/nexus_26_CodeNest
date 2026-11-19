@@ -1,9 +1,31 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Mail, ShieldCheck } from 'lucide-react';
 
+async function resizeAvatar(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    image.src = url;
+    await image.decode();
+
+    // Center-crop the photo before resizing so it keeps its proportions.
+    const size = Math.min(image.naturalWidth, image.naturalHeight);
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 256;
+    const context = canvas.getContext('2d');
+    context.fillStyle = '#fff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, (image.naturalWidth - size) / 2, (image.naturalHeight - size) / 2,
+      size, size, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', 0.8);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 export default function StudentProfileView({ complaints = [], department }) {
-  const { currentUser, role } = useAuth();
+  const { currentUser, role, updateAvatar } = useAuth();
   const total = complaints.length;
   const resolved = complaints.filter((c) => c.status === 'Resolved').length;
 
@@ -14,20 +36,63 @@ export default function StudentProfileView({ complaints = [], department }) {
       ? 'Executive Super Administrator'
       : `${department || 'Departmental'} Administrator`;
 
-  const currentAvatarUrl = currentUser?.avatar || currentUser?.profilePicture;
+  const [preview, setPreview] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const savedAvatar = currentUser?.avatar_url;
+  const currentAvatarUrl = preview || savedAvatar;
+
+  async function choosePhoto(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    setMessage('');
+    setError('');
+    setPreview(null);
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setError('Choose a JPG, PNG, or WebP image.');
+      return;
+    }
+
+    setBusy(true);
+    try {
+      setPreview(await resizeAvatar(file));
+    } catch {
+      setError('Could not open this image. Choose another photo.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function savePhoto(avatarUrl) {
+    setMessage('');
+    setError('');
+    setBusy(true);
+    try {
+      await updateAvatar(avatarUrl);
+      setPreview(null);
+      setMessage(avatarUrl ? 'Profile photo saved.' : 'Profile photo removed.');
+    } catch (error) {
+      setError(error.message || 'Could not update your profile photo.');
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
       {/* Profile Header */}
       <div className="bg-white rounded-3xl border border-[#E5E9E4] p-6 sm:p-8 shadow-xs">
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left">
-          {/* Avatar with Animated Hover Overlay */}
+          {/* Current photo or upload preview */}
           <div className="relative group shrink-0">
             <div className="w-28 h-28 rounded-3xl bg-[#247653] text-white flex items-center justify-center font-bold text-3xl shadow-md border-4 border-white overflow-hidden">
               {currentAvatarUrl ? (
                 <img
                   src={currentAvatarUrl}
-                  alt={currentUser?.name || 'Profile'}
+                  alt={preview ? 'Profile photo preview' : currentUser?.name || 'Profile'}
                   className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                 />
               ) : (
@@ -49,6 +114,23 @@ export default function StudentProfileView({ complaints = [], department }) {
             <p className="text-xs text-[#77847D] font-medium">
               Institutional Account • CampusConnect System
             </p>
+            {role === 'student' && (
+              <div className="space-y-2">
+                <label htmlFor="profile-photo" className="block text-xs font-semibold text-[#24332D]">Profile photo</label>
+                <input id="profile-photo" type="file" accept="image/jpeg,image/png,image/webp"
+                  className="max-w-full text-xs text-[#24332D] file:mr-2 file:rounded-lg file:bg-[#F5F2E9] file:px-3 file:py-2"
+                  onChange={choosePhoto} disabled={busy} />
+                <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
+                  <button type="button" onClick={() => savePhoto(preview)} disabled={busy || !preview}
+                    className="rounded-xl bg-[#247653] px-3 py-2 text-xs font-bold text-white disabled:opacity-50">Save</button>
+                  <button type="button" onClick={() => savePhoto(null)} disabled={busy || !savedAvatar}
+                    className="rounded-xl border border-[#E5E9E4] px-3 py-2 text-xs font-bold text-[#24332D] disabled:opacity-50">Remove photo</button>
+                </div>
+                {preview && <p className="text-xs text-[#77847D]">Photo preview. Select Save to apply it.</p>}
+                {message && <p role="status" className="text-xs text-[#166534]">{message}</p>}
+                {error && <p role="alert" className="text-xs text-red-700">{error}</p>}
+              </div>
+            )}
           </div>
         </div>
 

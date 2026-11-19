@@ -104,9 +104,9 @@ export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose }) {
         <div className="p-4 mx-3 my-3 rounded-2xl bg-[#194D40]/60 border border-[#247653]/30">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#247653] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-inner">
-              {currentUser?.avatar || currentUser?.profilePicture ? (
+              {currentUser?.avatar_url ? (
                 <img
-                  src={currentUser.avatar || currentUser.profilePicture}
+                  src={currentUser.avatar_url}
                   alt={currentUser.name}
                   className="w-full h-full object-cover rounded-xl"
                 />

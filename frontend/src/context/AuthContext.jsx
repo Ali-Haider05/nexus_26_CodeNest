@@ -1,5 +1,5 @@
 // Authentication & Role Management Context
-// Manages real user session, backend health checks, and profile updates
+// Manages the signed-in user session
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authService } from '../services/authService';
@@ -11,11 +11,9 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sessionError, setSessionError] = useState('');
-  const [backendStatus, setBackendStatus] = useState({ isConnected: false, checking: true });
 
   useEffect(() => {
     let active = true;
-    checkHealth();
     if (api.getToken()) {
       authService.getCurrentUser()
         .then((user) => { if (active) setCurrentUser(user); })
@@ -37,12 +35,6 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  const checkHealth = async () => {
-    setBackendStatus((prev) => ({ ...prev, checking: true }));
-    const result = await api.checkBackendHealth();
-    setBackendStatus({ isConnected: result.isConnected, checking: false, data: result.data });
-  };
-
   const login = async (credentials) => {
     const res = await authService.login(credentials);
     if (res.success) {
@@ -61,6 +53,13 @@ export function AuthProvider({ children }) {
     return res;
   };
 
+  const updateAvatar = async (avatarUrl) => {
+    const token = api.getToken();
+    const user = await authService.updateAvatar(avatarUrl);
+    if (api.getToken() === token) setCurrentUser(user);
+    return user;
+  };
+
   const logout = async () => {
     await authService.logout();
     setCurrentUser(null);
@@ -74,9 +73,8 @@ export function AuthProvider({ children }) {
         login,
         register,
         logout,
+        updateAvatar,
         sessionError,
-        backendStatus,
-        checkHealth,
         loading,
       }}
     >
