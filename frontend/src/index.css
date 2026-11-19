@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --brand-forest: #153F35;
+    --brand-emerald: #247653;
+    --brand-dark-green: #194D40;
+    --brand-ivory: #F5F2E9;
+    --brand-white: #FFFFFF;
+    --brand-orange: #F18B38;
+    --brand-charcoal: #24332D;
+    --brand-grey: #77847D;
+    --brand-border: #E5E9E4;
+
+    /* Status Colors */
+    --status-pending: #D97706;
+    --status-in-progress: #2563EB;
+    --status-resolved: #16834A;
+    --status-rejected: #DC4545;
+    --status-under-review: #7C5CC4;
+
+    /* Department Colors */
+    --dept-cafeteria: #EA873B;
+    --dept-library: #8662B8;
+    --dept-lab-it: #397CC5;
+    --dept-academic: #248B83;
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #F5F2E9;
+    color: #24332D;
+    min-height: 100vh;
+  }
+}
+
+/* Custom utility classes matching the strict design system */
+.bg-forest { background-color: #153F35; }
+.text-forest { color: #153F35; }
+.border-forest { border-color: #153F35; }
+
+.bg-emerald-brand { background-color: #247653; }
+.hover\:bg-emerald-brand-hover:hover { background-color: #194D40; }
+.text-emerald-brand { color: #247653; }
+.border-emerald-brand { border-color: #247653; }
+
+.bg-ivory { background-color: #F5F2E9; }
+.bg-orange-accent { background-color: #F18B38; }
+.text-orange-accent { color: #F18B38; }
+
+.text-charcoal { color: #24332D; }
+.text-muted-grey { color: #77847D; }
+.border-soft-grey { border-color: #E5E9E4; }
+
+/* Custom smooth transitions & animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulseSubtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-down {
+  animation: slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F5F2E9;
+}
+::-webkit-scrollbar-thumb {
+  background: #C4CFC9;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #99A8A0;
+}
