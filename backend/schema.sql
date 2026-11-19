@@ -37,3 +37,31 @@ CREATE TABLE IF NOT EXISTS responses (
   remark TEXT NOT NULL,
   created_at TIMESTAMP DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS complaint_history (
+  id SERIAL PRIMARY KEY,
+  complaint_id INT NOT NULL REFERENCES complaints(id) ON DELETE CASCADE,
+  status TEXT NOT NULL,
+  note TEXT,
+  changed_by INT REFERENCES users(id),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS notifications (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  complaint_id INT REFERENCES complaints(id) ON DELETE CASCADE,
+  message TEXT NOT NULL,
+  is_read BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS feedback (
+  id SERIAL PRIMARY KEY,
+  complaint_id INT NOT NULL UNIQUE REFERENCES complaints(id) ON DELETE CASCADE,
+  student_id INT NOT NULL REFERENCES users(id),
+  department_id INT NOT NULL REFERENCES departments(id),
+  rating INT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  comment TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);

@@ -80,4 +80,31 @@ router.patch('/me/avatar', authenticate, async (req, res) => {
   res.json(user);
 });
 
+router.patch('/password', authenticate, async (req, res) => {
+  const { currentPassword, newPassword } = req.body ?? {};
+  if (typeof newPassword !== 'string' || Buffer.byteLength(newPassword) < 8 || Buffer.byteLength(newPassword) > 72) {
+    return res.status(400).json({ message: 'New password must be 8 to 72 bytes' });
+  }
+  if (typeof currentPassword !== 'string' || !currentPassword || Buffer.byteLength(currentPassword) > 72) {
+    return res.status(401).json({ message: 'Current password is incorrect' });
+  }
+
+  const { rows: [user] } = await pool.query(
+    'SELECT password_hash FROM users WHERE id = $1',
+    [req.user.id],
+  );
+  if (!user || !(await bcrypt.compare(currentPassword, user.password_hash))) {
+    return res.status(401).json({ message: 'Current password is incorrect' });
+  }
+
+  // Avoid overwriting a password changed by a concurrent request.
+  const hash = await bcrypt.hash(newPassword, 12);
+  const { rowCount } = await pool.query(
+    'UPDATE users SET password_hash = $1 WHERE id = $2 AND password_hash = $3',
+    [hash, req.user.id, user.password_hash],
+  );
+  if (!rowCount) return res.status(401).json({ message: 'Current password is incorrect' });
+  res.json({ message: 'Password updated successfully' });
+});
+
 module.exports = router;

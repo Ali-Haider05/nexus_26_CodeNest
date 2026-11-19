@@ -72,9 +72,20 @@ router.post('/', authorize('student'), async (req, res) => {
   }
 
   const { rows: [complaint] } = await pool.query(
-    `INSERT INTO complaints (student_id, department_id, category, title, description, image_url, status)
-     SELECT $1, id, $2, $3, $4, $5, 'pending' FROM departments WHERE name = $6
-     RETURNING *`,
+    `WITH created AS (
+       INSERT INTO complaints (student_id, department_id, category, title, description, image_url, status)
+       SELECT $1, id, $2, $3, $4, $5, 'pending' FROM departments WHERE name = $6
+       RETURNING *
+     ), tracked AS (
+       INSERT INTO complaint_history (complaint_id, status, note, changed_by)
+       SELECT id, status, 'Complaint submitted', student_id FROM created
+     ), notified AS (
+       INSERT INTO notifications (user_id, complaint_id, message)
+       SELECT u.id, c.id, 'New complaint: ' || c.title
+       FROM created c CROSS JOIN users u
+       WHERE u.role = 'super_admin' OR (u.role = 'dept_admin' AND u.department_id = c.department_id)
+     )
+     SELECT * FROM created`,
     [req.user.id, category, title.trim(), description.trim(), image_url, department],
   );
   if (!complaint) return res.status(400).json({ message: 'No department found for this category' });
@@ -123,11 +134,24 @@ router.get('/', authorize('dept_admin', 'super_admin'), async (req, res) => {
 
 router.get('/:id', loadComplaint, async (req, res) => {
   const { rows: [result] } = await pool.query(
-    `SELECT (${responses}) AS responses FROM complaints c WHERE c.id = $1`,
+    `SELECT (${responses}) AS responses,
+       (SELECT json_agg(h ORDER BY (h.id IS NOT NULL), h.created_at NULLS LAST, h.id)
+        FROM (
+          SELECT id, complaint_id, status, note, changed_by, created_at
+          FROM complaint_history WHERE complaint_id = c.id
+          UNION ALL
+          SELECT NULL::int, c.id, 'pending', 'Complaint submitted', c.student_id, c.created_at
+          WHERE NOT EXISTS (
+            SELECT 1 FROM complaint_history WHERE complaint_id = c.id AND status = 'pending'
+          )
+        ) h) AS history,
+       (SELECT row_to_json(f) FROM feedback f WHERE f.complaint_id = c.id) AS feedback
+     FROM complaints c WHERE c.id = $1`,
     [req.complaint.id],
   );
   if (!result) return res.status(404).json({ message: 'Complaint not found' });
-  res.json({ ...req.complaint, responses: result.responses });
+  const { feedback, ...details } = result;
+  res.json({ ...req.complaint, ...details, ...(feedback && { feedback }) });
 });
 
 router.patch('/:id/status', authorize('dept_admin'), loadComplaint, async (req, res) => {
@@ -143,16 +167,29 @@ router.patch('/:id/status', authorize('dept_admin'), loadComplaint, async (req, 
   }
 
   const trimmedRemark = remark?.trim() ?? null;
-  // Update the complaint and record its remark in one atomic statement.
+  // Lock the previous status so concurrent updates record only real transitions.
   const { rows: [complaint] } = await pool.query(
-    `WITH updated AS (
-       UPDATE complaints
+    `WITH previous AS (
+       SELECT id, status FROM complaints WHERE id = $1 AND department_id = $6 FOR UPDATE
+     ), updated AS (
+       UPDATE complaints c
        SET status = $2, reject_reason = $3, updated_at = NOW()
-       WHERE id = $1 AND department_id = $6
-       RETURNING *
+       FROM previous p WHERE c.id = p.id
+       RETURNING c.*
      ), recorded AS (
        INSERT INTO responses (complaint_id, admin_id, remark)
        SELECT id, $4, $5 FROM updated WHERE $5::text IS NOT NULL
+     ), tracked AS (
+       INSERT INTO complaint_history (complaint_id, status, note, changed_by)
+       SELECT u.id, u.status, $5, $4 FROM updated u JOIN previous p ON p.id = u.id
+       WHERE p.status <> u.status
+     ), notified AS (
+       INSERT INTO notifications (user_id, complaint_id, message)
+       SELECT u.student_id, u.id,
+              CASE WHEN p.status <> u.status THEN format('Your complaint ''%s'' is now %s', u.title, u.status)
+                   ELSE 'New response on your complaint' END
+       FROM updated u JOIN previous p ON p.id = u.id
+       WHERE p.status <> u.status OR $5::text IS NOT NULL
      )
      SELECT * FROM updated`,
     [req.complaint.id, status, status === 'rejected' ? trimmedRemark : null,
@@ -167,13 +204,52 @@ router.post('/:id/respond', authorize('dept_admin'), loadComplaint, async (req, 
   if (!isText(remark)) return res.status(400).json({ message: 'Remark is required' });
 
   const { rows: [response] } = await pool.query(
-    `INSERT INTO responses (complaint_id, admin_id, remark)
-     SELECT id, $2, $3 FROM complaints WHERE id = $1 AND department_id = $4
-     RETURNING *`,
+    `WITH recorded AS (
+       INSERT INTO responses (complaint_id, admin_id, remark)
+       SELECT id, $2, $3 FROM complaints WHERE id = $1 AND department_id = $4
+       RETURNING *
+     ), notified AS (
+       INSERT INTO notifications (user_id, complaint_id, message)
+       SELECT c.student_id, r.complaint_id, 'New response on your complaint'
+       FROM recorded r JOIN complaints c ON c.id = r.complaint_id
+     )
+     SELECT * FROM recorded`,
     [req.complaint.id, req.user.id, remark.trim(), req.user.department_id],
   );
   if (!response) return res.status(404).json({ message: 'Complaint not found' });
   res.status(201).json(response);
+});
+
+router.post('/:id/feedback', authorize('student'), loadComplaint, async (req, res) => {
+  const { rating, comment = null } = req.body ?? {};
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+    return res.status(400).json({ message: 'Rating must be an integer from 1 to 5' });
+  }
+  if (comment !== null && (typeof comment !== 'string' || comment.length > 1000)) {
+    return res.status(400).json({ message: 'Comment must be at most 1,000 characters' });
+  }
+
+  const { rows: [feedback] } = await pool.query(
+    `WITH eligible AS (
+       SELECT id, student_id, department_id, title
+       FROM complaints WHERE id = $1 AND student_id = $2 AND status IN ('resolved', 'rejected')
+       FOR UPDATE
+     ), submitted AS (
+       INSERT INTO feedback (complaint_id, student_id, department_id, rating, comment)
+       SELECT id, student_id, department_id, $3, $4 FROM eligible
+       ON CONFLICT (complaint_id) DO NOTHING
+       RETURNING *
+     ), notified AS (
+       INSERT INTO notifications (user_id, complaint_id, message)
+       SELECT u.id, f.complaint_id, 'New feedback: ' || c.title
+       FROM submitted f JOIN eligible c ON c.id = f.complaint_id CROSS JOIN users u
+       WHERE u.role = 'super_admin' OR (u.role = 'dept_admin' AND u.department_id = f.department_id)
+     )
+     SELECT * FROM submitted`,
+    [req.complaint.id, req.user.id, rating, comment],
+  );
+  if (!feedback) return res.status(409).json({ message: 'Only resolved or rejected complaints can receive feedback once' });
+  res.status(201).json(feedback);
 });
 
 module.exports = router;

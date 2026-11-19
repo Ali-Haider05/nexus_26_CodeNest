@@ -6,6 +6,8 @@ const pool = require('./db');
 const authRoutes = require('./routes/auth');
 const complaintRoutes = require('./routes/complaints');
 const statsRoutes = require('./routes/stats');
+const notificationRoutes = require('./routes/notifications');
+const feedbackRoutes = require('./routes/feedback');
 
 const app = express();
 app.use(cors());
@@ -13,6 +15,8 @@ app.use(express.json({ limit: '5mb' }));
 app.use('/api/auth', authRoutes);
 app.use('/api/complaints', complaintRoutes);
 app.use('/api/stats', statsRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/feedback', feedbackRoutes);
 
 // Query PostgreSQL to report its current health.
 app.get('/health', async (req, res) => {
