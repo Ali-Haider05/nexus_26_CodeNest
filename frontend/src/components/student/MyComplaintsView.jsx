@@ -73,7 +73,7 @@ export default function MyComplaintsView({
                 setSearchTerm(e.target.value);
                 setCurrentPage(1);
               }}
-              placeholder="Search by Complaint ID (e.g. CMP-2026), keywords, description..."
+              placeholder="Search by title or description..."
               className="w-full text-xs pl-10 pr-4 py-3 rounded-xl border border-[#E5E9E4] focus:outline-none focus:ring-2 focus:ring-[#247653]/20 focus:border-[#247653] bg-white text-[#24332D]"
             />
           </div>
@@ -124,11 +124,11 @@ export default function MyComplaintsView({
       {/* Complaints List / Table */}
       {filtered.length === 0 ? (
         <EmptyState
-          title="No complaints match your filters"
+          title={complaints.length === 0 ? "You have not submitted any complaints yet" : "No complaints match your filters"}
           description={
-            searchTerm || statusFilter !== 'all' || categoryFilter !== 'all'
-              ? 'Try adjusting your search criteria or resetting the filters.'
-              : 'You have not lodged any campus complaints yet.'
+            complaints.length === 0
+              ? 'Submit a complaint to track it here.'
+              : 'Try adjusting your search criteria or resetting the filters.'
           }
           actionLabel="Submit a Complaint"
           onAction={onNavigateSubmit}

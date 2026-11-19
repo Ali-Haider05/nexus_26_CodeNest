@@ -34,7 +34,7 @@ export default function StudentProfileView({ complaints = [], department }) {
 
   const roleTitle =
     role === 'student'
-      ? 'Verified University Student'
+      ? 'Student'
       : role === 'super_admin'
       ? 'Executive Super Administrator'
       : `${department || 'Departmental'} Administrator`;
@@ -143,7 +143,7 @@ export default function StudentProfileView({ complaints = [], department }) {
           <div className="p-4 rounded-2xl bg-[#FAF9F5] border border-[#E5E9E4] space-y-1">
             <span className="text-[11px] font-bold text-[#77847D] uppercase tracking-wider flex items-center gap-1.5">
               <Mail size={14} className="text-[#247653]" />
-              Institutional Email
+              Email
             </span>
             <p className="text-sm font-bold text-[#24332D] truncate">
               {currentUser?.email || 'N/A'}

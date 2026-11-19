@@ -91,7 +91,7 @@ export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose, colla
         } shadow-2xl lg:shadow-none border-r border-[#194D40]`}
       >
         {/* Brand header */}
-        <div className={"h-16 px-6 flex items-center justify-between border-b border-[#194D40]" + (collapsed ? " lg:justify-center lg:px-2" : " lg:px-4")}>
+        <div className={"h-16 shrink-0 px-6 flex items-center justify-between border-b border-[#194D40]" + (collapsed ? " lg:justify-center lg:px-2" : " lg:px-4")}>
           <div className={"flex items-center gap-3" + hiddenWhenCollapsed}>
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#247653] to-[#194D40] flex items-center justify-center text-white font-extrabold text-lg shadow-sm border border-[#247653]/40">
               CC
@@ -120,7 +120,7 @@ export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose, colla
         </div>
 
         {/* User Role Card in Sidebar */}
-        <div className={"p-4 mx-3 my-3 rounded-2xl bg-[#194D40]/60 border border-[#247653]/30" + (collapsed ? " lg:mx-2 lg:p-1" : "")}>
+        <div className={"shrink-0 p-4 mx-3 my-3 rounded-2xl bg-[#194D40]/60 border border-[#247653]/30" + (collapsed ? " lg:mx-2 lg:p-1" : "")}>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#247653] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-inner">
               {currentUser?.avatar_url ? (
@@ -139,7 +139,7 @@ export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose, colla
               </p>
               <p className="text-[11px] text-[#F18B38] font-semibold truncate mt-0.5">
                 {role === 'student'
-                  ? `Roll: ${currentUser?.studentId || 'Student'}`
+                  ? `Role: ${currentUser?.studentId || 'Student'}`
                   : role === 'super_admin'
                   ? 'Central Super Admin'
                   : currentUser?.department || 'Department Admin'}
@@ -149,7 +149,7 @@ export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose, colla
         </div>
 
         {/* Navigation Section */}
-        <div className={"flex-1 px-3 py-2 overflow-y-auto space-y-1" + (collapsed ? " lg:px-2" : "")}>
+        <div className={"min-h-0 flex-1 overflow-y-auto px-3 py-2 space-y-1" + (collapsed ? " lg:px-2" : "")}>
           <p className={"px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-[#7E9A90]" + hiddenWhenCollapsed}>
             {role === 'student'
               ? 'Student Workspace'
@@ -206,7 +206,7 @@ export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose, colla
         </div>
 
         {/* Bottom / Logout Action */}
-        <div className="p-3 border-t border-[#194D40]">
+        <div className="shrink-0 p-3 border-t border-[#194D40]">
           <button
             onClick={logout}
             title={collapsed ? "Logout" : undefined}

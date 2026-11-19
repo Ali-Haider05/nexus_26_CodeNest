@@ -14,7 +14,7 @@ export default function ComplaintTrackingView({ complaints = [] }) {
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h2 className="text-xl sm:text-2xl font-extrabold text-[#24332D]">Real-Time Complaint Tracking</h2>
+        <h2 className="text-xl sm:text-2xl font-extrabold text-[#24332D]">Complaint Tracking</h2>
         <p className="text-xs sm:text-sm text-[#77847D]">
           Inspect step-by-step progress, investigation milestones, and official remarks from department administrators
         </p>
