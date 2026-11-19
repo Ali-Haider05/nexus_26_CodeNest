@@ -14,5 +14,6 @@ export const authService = {
   register: ({ name, email, password }) => authenticate('register', { name, email, password }),
   getCurrentUser: () => api.request('/api/auth/me'),
   updateAvatar: (avatar_url) => api.request('/api/auth/me/avatar', { method: 'PATCH', body: { avatar_url } }),
+  changePassword: (body) => api.request('/api/auth/password', { method: 'PATCH', body, credentialCheck: true }),
   logout: () => api.setToken(null),
 };

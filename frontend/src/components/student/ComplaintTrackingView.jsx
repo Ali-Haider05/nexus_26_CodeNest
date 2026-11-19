@@ -1,14 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import StatusBadge from '../common/StatusBadge';
 import CategoryBadge from '../common/CategoryBadge';
 import ComplaintTimeline from '../common/ComplaintTimeline';
 import EmptyState from '../common/EmptyState';
-import { Search, Clock, ArrowRight, ShieldCheck, MessageSquare, AlertCircle } from 'lucide-react';
+import ComplaintFeedback from './ComplaintFeedback';
+import { complaintService } from '../../services/complaintService';
 
-export default function ComplaintTrackingView({
-  complaints = [],
-  onSelectComplaint,
-}) {
+export default function ComplaintTrackingView({ complaints = [] }) {
   const [selectedId, setSelectedId] = useState(complaints[0]?.id || null);
 
   const selectedComplaint = complaints.find((c) => c.id === selectedId) || complaints[0];
@@ -41,10 +39,12 @@ export default function ComplaintTrackingView({
               {complaints.map((c) => {
                 const isSelected = selectedComplaint?.id === c.id;
                 return (
-                  <div
+                  <button
+                    type="button"
+                    aria-pressed={isSelected}
                     key={c.id}
                     onClick={() => setSelectedId(c.id)}
-                    className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
+                    className={`w-full text-left p-3.5 rounded-2xl border cursor-pointer transition-all ${
                       isSelected
                         ? 'border-[#247653] bg-[#ECFDF5]/60 ring-2 ring-[#247653]/15 shadow-xs'
                         : 'border-[#E5E9E4] bg-white hover:bg-[#FAF9F5]'
@@ -70,7 +70,7 @@ export default function ComplaintTrackingView({
                         })}
                       </span>
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -116,16 +116,37 @@ export default function ComplaintTrackingView({
 
               {/* Progress & Remarks Timeline */}
               <div>
-                <ComplaintTimeline
-                  history={selectedComplaint.history || []}
-                  currentStatus={selectedComplaint.status}
-                />
+                <TrackingDetails key={selectedComplaint.id} id={selectedComplaint.id} />
               </div>
 
             </div>
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function TrackingDetails({ id }) {
+  const [detail, setDetail] = useState(null);
+  const [error, setError] = useState('');
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    let active = true;
+    complaintService.getComplaintById(id)
+      .then((complaint) => { if (active) setDetail(complaint); })
+      .catch((error) => { if (active) setError(error.message); });
+    return () => { active = false; };
+  }, [id, retry]);
+
+  if (error) return <p role="alert" className="text-sm text-red-700">
+    {error} <button type="button" className="font-bold underline" onClick={() => { setError(""); setRetry(retry + 1); }}>Retry</button>
+  </p>;
+  if (!detail) return <p role="status" className="text-sm">Loading complaint history...</p>;
+  return (
+    <div className="space-y-4">
+      <ComplaintTimeline complaint={detail} includeResponses />
+      <ComplaintFeedback complaint={detail} />
     </div>
   );
 }

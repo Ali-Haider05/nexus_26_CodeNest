@@ -18,6 +18,7 @@ import StudentProfileView from '../student/StudentProfileView';
 
 // Department Admin Views
 import DepartmentOverview from '../admin/DepartmentOverview';
+import AdminFeedbackView from '../admin/AdminFeedbackView';
 import AssignedComplaintsView from '../admin/AssignedComplaintsView';
 
 // Super Admin Views
@@ -34,6 +35,14 @@ export default function DashboardLayout() {
   const { currentUser, role } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('campusconnect_sidebar_collapsed') === 'true');
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
+
+  function toggleCollapsed() {
+    const next = !sidebarCollapsed;
+    localStorage.setItem('campusconnect_sidebar_collapsed', String(next));
+    setSidebarCollapsed(next);
+  }
 
   // Complaints state
   const [complaints, setComplaints] = useState([]);
@@ -146,14 +155,18 @@ export default function DashboardLayout() {
         activeTab={activeTab}
         onSelectTab={navigate}
         isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
+        onClose={closeSidebar}
+        collapsed={sidebarCollapsed}
+        onToggleCollapsed={toggleCollapsed}
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 lg:pl-64">
+      <div className={"flex-1 flex flex-col min-w-0 transition-[padding] duration-300 " + (sidebarCollapsed ? "lg:pl-16" : "lg:pl-64")}>
         {/* Navbar */}
         <Navbar
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+          sidebarOpen={sidebarOpen}
+          onOpenComplaint={(id) => openComplaint({ id })}
         />
 
         {/* Page Body */}
@@ -207,10 +220,7 @@ export default function DashboardLayout() {
                     />
                   )}
                   {activeTab === 'tracking' && (
-                    <ComplaintTrackingView
-                      complaints={complaints}
-                      onSelectComplaint={openComplaint}
-                    />
+                    <ComplaintTrackingView complaints={complaints} />
                   )}
                   {activeTab === 'feedback' && (
                     <FeedbackResponsesView
@@ -342,6 +352,7 @@ export default function DashboardLayout() {
                   )}
                 </>
               )}
+              {role !== 'student' && activeTab === 'admin-feedback' && <AdminFeedbackView />}
               {role !== 'student' && activeTab === 'overview' && stats && (
                 <StatsPanels stats={stats} recurring={recurring} error={recurringError} showDepartmentChart={role === 'dept_admin'} />
               )}
@@ -352,6 +363,7 @@ export default function DashboardLayout() {
 
       {/* Modals */}
       {isDetailsOpen && <ComplaintDetailsModal
+        key={selectedComplaint.id}
         complaint={selectedComplaint}
         isOpen={isDetailsOpen}
         onClose={() => setIsDetailsOpen(false)}

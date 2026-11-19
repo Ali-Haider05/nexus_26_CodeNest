@@ -1,131 +1,63 @@
 import React from 'react';
-import { STATUS_CONFIG } from '../../constants/theme';
-import { CheckCircle2, Clock, Wrench, XCircle, FileText, ArrowRight } from 'lucide-react';
+import { Building2, CheckCircle2, FileText, Wrench, XCircle } from 'lucide-react';
+import { STATUS_LABELS } from '../../services/complaintService';
 
-const stepIcons = {
-  Submitted: FileText,
-  'In Progress': Wrench,
-  Resolved: CheckCircle2,
-  Rejected: XCircle,
-};
-
-export default function ComplaintTimeline({ history = [], currentStatus = 'Pending' }) {
-  // Canonical stages in life-cycle
-  const isRejected = currentStatus === 'Rejected' || history.some((h) => h.status === 'Rejected');
-  const stages = isRejected
-    ? ['Submitted', 'Rejected']
-    : ['Submitted', 'In Progress', 'Resolved'];
-
-  const currentStageIndex = Math.max(0, stages.indexOf(currentStatus));
+export default function ComplaintTimeline({ complaint, includeResponses = false }) {
+  const history = complaint.history || [];
+  const submission = history.find((entry) => entry.status === 'pending')?.created_at ?? complaint.createdAt;
+  const finalStatus = complaint.status === 'Rejected' ? 'rejected' : 'resolved';
+  const steps = [
+    { id: 'submitted', name: 'Submitted', date: submission, icon: FileText },
+    { id: 'assigned', name: 'Assigned to ' + complaint.department, date: submission, icon: Building2 },
+    { id: 'in_progress', name: 'In Progress', icon: Wrench },
+    { id: finalStatus, name: STATUS_LABELS[finalStatus], icon: finalStatus === 'rejected' ? XCircle : CheckCircle2 },
+  ];
+  const current = complaint.status === 'Pending' ? 'assigned' :
+    complaint.status === 'In Progress' ? 'in_progress' : finalStatus;
+  const events = history.map((entry) => ({
+    label: entry.status === 'pending' ? 'Submitted' : STATUS_LABELS[entry.status] || entry.status,
+    date: entry.created_at, note: entry.note,
+  }));
+  if (includeResponses) {
+    for (const response of complaint.responses || []) {
+      const event = events.find((entry) => entry.note === response.remark && entry.date === response.createdAt);
+      if (event && !event.actor) event.actor = response.adminName;
+      else events.push({ label: 'Department response', date: response.createdAt, note: response.remark, actor: response.adminName });
+    }
+    events.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  }
 
   return (
     <div className="space-y-6">
-      {/* Visual Step Progress Bar */}
-      <div className="relative flex items-center justify-between px-2 pt-2 pb-4">
-        {/* Connector line behind circles */}
-        <div className="absolute top-6 left-6 right-6 h-0.5 bg-[#E5E9E4] -z-0" />
-        <div
-          className="absolute top-6 left-6 h-0.5 bg-[#247653] transition-all duration-500 -z-0"
-          style={{
-            width: `${Math.min(100, (currentStageIndex / (stages.length - 1)) * 100)}%`,
-          }}
-        />
-
-        {stages.map((stage, idx) => {
-          const isCompleted = idx < currentStageIndex || (idx === currentStageIndex && (currentStatus === 'Resolved' || currentStatus === 'Rejected'));
-          const isCurrent = idx === currentStageIndex && currentStatus !== 'Resolved' && currentStatus !== 'Rejected';
-          const isPending = idx > currentStageIndex;
-
-          const IconComp = stepIcons[stage] || Clock;
-          const statusCfg = STATUS_CONFIG[stage] || { color: '#247653' };
-
+      <ol aria-label="Complaint progress" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {steps.map(({ id, name, date, icon: Icon }) => {
+          const active = current === id;
+          const recorded = history.findLast((entry) => entry.status === id);
+          const time = date ?? recorded?.created_at ?? (active ? complaint.updatedAt : null);
           return (
-            <div key={stage} className="flex flex-col items-center z-10">
-              <div
-                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all border-2 ${
-                  isCompleted
-                    ? 'bg-[#247653] border-[#247653] text-white shadow-xs'
-                    : isCurrent
-                    ? 'bg-white border-[#F18B38] text-[#F18B38] ring-4 ring-[#F18B38]/20 animate-pulse'
-                    : 'bg-white border-[#E5E9E4] text-[#77847D]'
-                }`}
-              >
-                <IconComp size={16} />
-              </div>
-              <span
-                className={`mt-2 text-xs font-semibold whitespace-nowrap ${
-                  isCurrent
-                    ? 'text-[#F18B38]'
-                    : isCompleted
-                    ? 'text-[#24332D]'
-                    : 'text-[#77847D]'
-                }`}
-              >
-                {stage}
+            <li key={id} aria-current={active ? 'step' : undefined}
+              className={'flex flex-col items-center gap-1 rounded-xl p-2 text-center text-xs ' + (active ? 'bg-[#ECFDF5] font-bold text-[#153F35] ring-2 ring-[#247653]' : 'text-[#77847D]')}>
+              <span className={'grid h-9 w-9 place-items-center rounded-full border ' + (active || date || recorded ? 'border-[#247653] bg-[#247653] text-white' : 'border-[#E5E9E4]')}>
+                <Icon size={16} aria-hidden="true" />
               </span>
-            </div>
+              <span>{name}</span>
+              {time && <time dateTime={time} className="text-[11px] font-normal">{new Date(time).toLocaleString()}</time>}
+            </li>
           );
         })}
-      </div>
-
-      {/* Detailed Chronological Event Log */}
-      <div className="border-t border-[#E5E9E4] pt-4">
-        <h4 className="text-xs font-bold text-[#77847D] uppercase tracking-wider mb-3">
-          Activity & Response History
-        </h4>
-        <div className="space-y-4">
-          {history.length === 0 ? (
-            <p className="text-sm text-[#77847D] italic">No status activity logged yet.</p>
-          ) : (
-            history.map((event, idx) => {
-              const statusCfg = STATUS_CONFIG[event.status] || STATUS_CONFIG.Pending;
-              const formattedDate = new Date(event.timestamp).toLocaleString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-              });
-
-              return (
-                <div key={idx} className="relative pl-6 pb-2 border-l-2 border-[#E5E9E4] last:border-l-transparent">
-                  {/* Bullet */}
-                  <div
-                    className="absolute -left-[7px] top-1 w-3 h-3 rounded-full border-2 border-white"
-                    style={{ backgroundColor: statusCfg.color }}
-                  />
-
-                  <div className="bg-[#FAF9F5] border border-[#E5E9E4] rounded-xl p-3.5 space-y-1.5">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="px-2 py-0.5 rounded text-xs font-bold"
-                          style={{
-                            backgroundColor: statusCfg.bg,
-                            color: statusCfg.text,
-                            borderColor: statusCfg.border,
-                          }}
-                        >
-                          {event.status}
-                        </span>
-                        <span className="text-xs font-semibold text-[#24332D]">
-                          {event.actor}
-                        </span>
-                      </div>
-                      <span className="text-xs text-[#77847D]">{formattedDate}</span>
-                    </div>
-
-                    {event.remarks && (
-                      <p className="text-xs text-[#24332D] font-medium leading-relaxed bg-white p-2.5 rounded-lg border border-[#E5E9E4]">
-                        "{event.remarks}"
-                      </p>
-                    )}
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
+      </ol>
+      <div className="space-y-3 border-t border-[#E5E9E4] pt-4">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-[#77847D]">Activity &amp; Response History</h4>
+        {events.length === 0 && <p className="text-sm text-[#77847D]">No status activity logged yet.</p>}
+        {events.map(({ label, actor, date, note }, index) => (
+          <div key={index} className="space-y-1 rounded-xl border border-[#E5E9E4] bg-[#FAF9F5] p-3 text-xs">
+            <div className="flex flex-wrap justify-between gap-2">
+              <span className="font-bold">{label}{actor ? ' ? ' + actor : ''}</span>
+              {date && <time dateTime={date} className="text-[#77847D]">{new Date(date).toLocaleString()}</time>}
+            </div>
+            {note && <p className="whitespace-pre-wrap break-words rounded-lg bg-white p-2">{note}</p>}
+          </div>
+        ))}
       </div>
     </div>
   );

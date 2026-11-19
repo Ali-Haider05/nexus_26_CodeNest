@@ -61,6 +61,9 @@ export const complaintService = {
       method: 'PATCH', body: { status: statusValue(status), ...(remark && { remark }) },
     }));
   },
+  submitFeedback(id, body) {
+    return api.request(path + '/' + encodeURIComponent(id) + '/feedback', { method: 'POST', body });
+  },
   respond(id, remark) {
     return api.request(path + '/' + encodeURIComponent(id) + '/respond', {
       method: 'POST', body: { remark },

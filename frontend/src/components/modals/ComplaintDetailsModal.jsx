@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import StatusBadge from '../common/StatusBadge';
 import CategoryBadge from '../common/CategoryBadge';
+import ComplaintFeedback from '../student/ComplaintFeedback';
 import ComplaintTimeline from '../common/ComplaintTimeline';
 import { X, Calendar, User, Building, MessageSquare, ExternalLink, ShieldCheck } from 'lucide-react';
 
@@ -171,15 +172,14 @@ export default function ComplaintDetailsModal({
               <button className="rounded-xl bg-[#247653] px-4 py-2 text-sm text-white" disabled={sending || !remark.trim()}>{sending ? "Sending?" : "Send response"}</button>
             </form>
           )}
+          {currentUser?.role === 'student' && <ComplaintFeedback key={complaint.id} complaint={complaint} />}
+
           {/* Complete Status Timeline */}
           <div>
             <h3 className="text-xs font-bold text-[#77847D] uppercase tracking-wider mb-3">
               Complaint Lifecycle & Audit Trail
             </h3>
-            <ComplaintTimeline
-              history={complaint.history || []}
-              currentStatus={complaint.status}
-            />
+            <ComplaintTimeline complaint={complaint} />
           </div>
         </div>
 

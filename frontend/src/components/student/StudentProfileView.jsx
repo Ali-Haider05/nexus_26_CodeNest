@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import PasswordForm from '../common/PasswordForm';
 import { Mail, ShieldCheck } from 'lucide-react';
 
 async function resizeAvatar(file) {
@@ -189,6 +190,12 @@ export default function StudentProfileView({ complaints = [], department }) {
         </div>
       </div>
 
+      {role === 'student' && (
+        <section className="space-y-4 rounded-3xl border border-[#E5E9E4] bg-white p-6 shadow-xs">
+          <h3 className="font-bold text-[#24332D]">Change password</h3>
+          <PasswordForm />
+        </section>
+      )}
     </div>
   );
 }

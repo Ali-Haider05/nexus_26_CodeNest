@@ -7,7 +7,7 @@ export const api = {
     if (token) localStorage.setItem(tokenKey, token);
     else localStorage.removeItem(tokenKey);
   },
-  async request(path, { method = 'GET', body, authenticated = true, waitForWakeUp = false } = {}) {
+  async request(path, { method = 'GET', body, authenticated = true, waitForWakeUp = false, credentialCheck = false } = {}) {
     const token = authenticated && this.getToken();
     const headers = { Accept: 'application/json' };
     if (token) headers.Authorization = 'Bearer ' + token;
@@ -27,13 +27,14 @@ export const api = {
     }
     const data = await response.json().catch(() => null);
     if (!response.ok) {
-      if (response.status === 401 && token && this.getToken() === token) {
+      const wrongPassword = credentialCheck && data?.message === 'Current password is incorrect';
+      if (response.status === 401 && !wrongPassword && token && this.getToken() === token) {
         this.setToken(null);
         window.dispatchEvent(new CustomEvent('campusconnect_unauthorized'));
       }
       const message = {
         400: data?.message || 'Check the submitted fields and try again.',
-        401: authenticated ? 'Your session expired. Please sign in again.' : 'Invalid email or password.',
+        401: wrongPassword ? data.message : authenticated ? 'Your session expired. Please sign in again.' : 'Invalid email or password.',
         403: 'Access denied. Your role cannot perform this action.',
       }[response.status] || data?.message || 'Request failed (HTTP ' + response.status + ').';
       throw Object.assign(new Error(message), { status: response.status });

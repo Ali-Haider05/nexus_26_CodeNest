@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard,
@@ -16,13 +16,23 @@ import {
   Building,
   BarChart3,
   TrendingUp,
-  ShieldCheck,
   ChevronRight,
+  PanelLeftClose,
+  PanelLeftOpen,
   X,
 } from 'lucide-react';
 
-export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose }) {
+export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose, collapsed, onToggleCollapsed }) {
   const { currentUser, role, logout } = useAuth();
+
+  const collapseLabel = collapsed ? "Expand sidebar" : "Collapse sidebar";
+  const hiddenWhenCollapsed = collapsed ? " lg:hidden" : "";
+  useEffect(() => {
+    if (!isOpen) return;
+    const close = (event) => { if (event.key === "Escape") onClose(); };
+    document.addEventListener("keydown", close);
+    return () => document.removeEventListener("keydown", close);
+  }, [isOpen, onClose]);
 
   // Navigation items strictly mapped to the university problem statement
   const getNavItems = () => {
@@ -43,6 +53,7 @@ export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose }) {
         { id: 'in-progress', label: 'In Progress', icon: Wrench, badgeColor: '#2563EB' },
         { id: 'resolved', label: 'Resolved', icon: CheckCircle2, badgeColor: '#16834A' },
         { id: 'rejected', label: 'Rejected', icon: XCircle, badgeColor: '#DC4545' },
+        { id: 'admin-feedback', label: 'Feedback', icon: MessageSquareQuote },
         { id: 'profile', label: 'Profile', icon: User },
       ];
     } else if (role === 'super_admin') {
@@ -52,6 +63,7 @@ export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose }) {
         { id: 'departments', label: 'Departments', icon: Building },
         { id: 'analytics', label: 'Analytics & Reports', icon: BarChart3, highlight: true },
         { id: 'trends', label: 'Complaint Trends', icon: TrendingUp },
+        { id: 'admin-feedback', label: 'Feedback', icon: MessageSquareQuote },
         { id: 'profile', label: 'Profile', icon: User },
       ];
     }
@@ -72,13 +84,15 @@ export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose }) {
 
       {/* Sidebar container */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 w-64 bg-[#153F35] text-white flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0 ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
+        id="workspace-sidebar"
+        aria-label="Workspace navigation"
+        className={`fixed top-0 bottom-0 left-0 z-50 w-64 ${collapsed ? "lg:w-16" : ""} bg-[#153F35] text-white flex flex-col transition-[transform,width,visibility] duration-300 ease-in-out lg:visible lg:translate-x-0 ${
+          isOpen ? 'visible translate-x-0' : 'invisible -translate-x-full'
         } shadow-2xl lg:shadow-none border-r border-[#194D40]`}
       >
         {/* Brand header */}
-        <div className="h-16 px-6 flex items-center justify-between border-b border-[#194D40]">
-          <div className="flex items-center gap-3">
+        <div className={"h-16 px-6 flex items-center justify-between border-b border-[#194D40]" + (collapsed ? " lg:justify-center lg:px-2" : " lg:px-4")}>
+          <div className={"flex items-center gap-3" + hiddenWhenCollapsed}>
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#247653] to-[#194D40] flex items-center justify-center text-white font-extrabold text-lg shadow-sm border border-[#247653]/40">
               CC
             </div>
@@ -94,14 +108,19 @@ export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose }) {
 
           <button
             onClick={onClose}
+            aria-label="Close sidebar"
             className="lg:hidden p-1.5 rounded-lg text-[#A3B8B0] hover:text-white hover:bg-[#194D40]"
           >
             <X size={18} />
           </button>
+          <button type="button" onClick={onToggleCollapsed} aria-label={collapseLabel} title={collapseLabel}
+            className="hidden shrink-0 rounded-lg p-1.5 text-[#A3B8B0] hover:bg-[#194D40] hover:text-white lg:block">
+            {collapsed ? <PanelLeftOpen size={19} /> : <PanelLeftClose size={19} />}
+          </button>
         </div>
 
         {/* User Role Card in Sidebar */}
-        <div className="p-4 mx-3 my-3 rounded-2xl bg-[#194D40]/60 border border-[#247653]/30">
+        <div className={"p-4 mx-3 my-3 rounded-2xl bg-[#194D40]/60 border border-[#247653]/30" + (collapsed ? " lg:mx-2 lg:p-1" : "")}>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#247653] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-inner">
               {currentUser?.avatar_url ? (
@@ -114,7 +133,7 @@ export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose }) {
                 currentUser?.name?.charAt(0) || 'U'
               )}
             </div>
-            <div className="min-w-0 flex-1">
+            <div className={"min-w-0 flex-1" + hiddenWhenCollapsed}>
               <p className="text-xs font-bold text-white truncate leading-tight">
                 {currentUser?.name || 'Authorized User'}
               </p>
@@ -130,8 +149,8 @@ export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose }) {
         </div>
 
         {/* Navigation Section */}
-        <div className="flex-1 px-3 py-2 overflow-y-auto space-y-1">
-          <p className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-[#7E9A90]">
+        <div className={"flex-1 px-3 py-2 overflow-y-auto space-y-1" + (collapsed ? " lg:px-2" : "")}>
+          <p className={"px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-[#7E9A90]" + hiddenWhenCollapsed}>
             {role === 'student'
               ? 'Student Workspace'
               : role === 'dept_admin'
@@ -146,6 +165,9 @@ export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose }) {
             return (
               <button
                 key={item.id}
+                aria-label={item.label}
+                aria-current={isActive ? "page" : undefined}
+                title={collapsed ? item.label : undefined}
                 onClick={() => {
                   onSelectTab(item.id);
                   onClose();
@@ -154,7 +176,7 @@ export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose }) {
                   isActive
                     ? 'bg-[#247653] text-white shadow-xs font-bold'
                     : 'text-[#D0DCD6] hover:bg-[#194D40] hover:text-white'
-                } ${item.highlight && !isActive ? 'border border-[#F18B38]/30 text-[#F18B38]' : ''}`}
+                } ${collapsed ? 'lg:justify-center lg:px-1' : ''} ${item.highlight && !isActive ? 'border border-[#F18B38]/30 text-[#F18B38]' : ''}`}
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <IconComp
@@ -167,16 +189,16 @@ export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose }) {
                         : 'text-[#96ACA3]'
                     }`}
                   />
-                  <span className="truncate">{item.label}</span>
+                  <span className={"truncate" + hiddenWhenCollapsed}>{item.label}</span>
                 </div>
 
                 {item.badgeColor ? (
                   <span
-                    className="w-2 h-2 rounded-full shrink-0"
+                    className={"w-2 h-2 rounded-full shrink-0" + hiddenWhenCollapsed}
                     style={{ backgroundColor: item.badgeColor }}
                   />
                 ) : (
-                  isActive && <ChevronRight size={14} className="text-white/80 shrink-0" />
+                  isActive && <ChevronRight size={14} className={"text-white/80 shrink-0" + hiddenWhenCollapsed} />
                 )}
               </button>
             );
@@ -187,10 +209,12 @@ export default function Sidebar({ activeTab, onSelectTab, isOpen, onClose }) {
         <div className="p-3 border-t border-[#194D40]">
           <button
             onClick={logout}
-            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-[#D0DCD6] hover:bg-[#DC4545]/20 hover:text-[#FECACA] transition-colors"
+            title={collapsed ? "Logout" : undefined}
+            aria-label="Logout"
+            className={"w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-[#D0DCD6] hover:bg-[#DC4545]/20 hover:text-[#FECACA] transition-colors" + (collapsed ? " lg:justify-center lg:px-1" : "")}
           >
             <LogOut size={16} className="text-[#A3B8B0]" />
-            <span>Logout</span>
+            <span className={hiddenWhenCollapsed}>Logout</span>
           </button>
         </div>
       </aside>
