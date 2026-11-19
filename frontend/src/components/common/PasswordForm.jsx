@@ -8,17 +8,15 @@ const fields = [
 ];
 const empty = { currentPassword: '', newPassword: '', confirmation: '' };
 
-export default function PasswordForm() {
+export default function PasswordForm({ onSaved, onCancel }) {
   const prefix = useId();
   const [values, setValues] = useState(empty);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   async function submit(event) {
     event.preventDefault();
     setError('');
-    setSuccess('');
     const { currentPassword, newPassword, confirmation } = values;
     const size = new TextEncoder().encode(newPassword).length;
     if (size < 8 || size > 72) return setError('Use a new password between 8 and 72 bytes.');
@@ -27,8 +25,7 @@ export default function PasswordForm() {
     setBusy(true);
     try {
       await authService.changePassword({ currentPassword, newPassword });
-      setValues(empty);
-      setSuccess('Password changed successfully.');
+      onSaved();
     } catch (error) {
       setError(error.message);
     } finally {
@@ -47,10 +44,12 @@ export default function PasswordForm() {
         </label>
       ))}
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-      {success && <p role="status" className="text-sm text-[#166534]">{success}</p>}
-      <button type="submit" disabled={busy} className="rounded-xl bg-[#247653] px-4 py-2 text-xs font-bold text-white disabled:opacity-50">
-        {busy ? 'Changing password...' : 'Change password'}
-      </button>
+      <div className="flex gap-2">
+        <button type="submit" disabled={busy} className="rounded-xl bg-[#247653] px-4 py-2 text-xs font-bold text-white disabled:opacity-50">
+          {busy ? 'Saving...' : 'Save'}
+        </button>
+        <button type="button" onClick={onCancel} disabled={busy} className="rounded-xl border border-[#E5E9E4] px-4 py-2 text-xs font-bold text-[#24332D] disabled:opacity-50">Cancel</button>
+      </div>
     </form>
   );
 }

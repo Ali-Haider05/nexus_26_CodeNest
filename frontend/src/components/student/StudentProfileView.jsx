@@ -27,6 +27,8 @@ async function resizeAvatar(file) {
 
 export default function StudentProfileView({ complaints = [], department }) {
   const { currentUser, role, updateAvatar } = useAuth();
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [passwordSaved, setPasswordSaved] = useState(false);
   const total = complaints.length;
   const resolved = complaints.filter((c) => c.status === 'Resolved').length;
 
@@ -192,8 +194,13 @@ export default function StudentProfileView({ complaints = [], department }) {
 
       {role === 'student' && (
         <section className="space-y-4 rounded-3xl border border-[#E5E9E4] bg-white p-6 shadow-xs">
-          <h3 className="font-bold text-[#24332D]">Change password</h3>
-          <PasswordForm />
+          {passwordOpen ? (
+            <PasswordForm onCancel={() => setPasswordOpen(false)} onSaved={() => { setPasswordOpen(false); setPasswordSaved(true); }} />
+          ) : (
+            <button type="button" className="rounded-xl bg-[#247653] px-4 py-2 text-xs font-bold text-white"
+              onClick={() => { setPasswordSaved(false); setPasswordOpen(true); }}>Change Password</button>
+          )}
+          {passwordSaved && <p role="status" className="text-sm text-[#166534]">Password changed successfully.</p>}
         </section>
       )}
     </div>

@@ -15,6 +15,7 @@ export default function Navbar({ onToggleSidebar, sidebarOpen, onOpenComplaint }
   const { currentUser, role } = useAuth();
   const dialog = useRef(null);
   const [passwordOpen, setPasswordOpen] = useState(false);
+  const [passwordSaved, setPasswordSaved] = useState(false);
 
   const roleLabel =
     role === 'student'
@@ -84,6 +85,7 @@ export default function Navbar({ onToggleSidebar, sidebarOpen, onOpenComplaint }
                 <button type="button" className="w-full rounded-lg p-2 text-left text-xs font-semibold hover:bg-[#F5F2E9]"
                   onClick={(event) => {
                     event.currentTarget.closest('details').open = false;
+                    setPasswordSaved(false);
                     setPasswordOpen(true);
                     dialog.current.showModal();
                   }}>Change password</button>
@@ -114,6 +116,7 @@ export default function Navbar({ onToggleSidebar, sidebarOpen, onOpenComplaint }
           </div>
         </div>
       </div>
+      {passwordSaved && <p role="status" className="mt-2 text-right text-xs text-[#166534]">Password changed successfully.</p>}
       {role !== 'student' && (
         <dialog ref={dialog} onClose={() => setPasswordOpen(false)} aria-labelledby="admin-password-title"
           className="fixed inset-0 m-auto w-[min(26rem,calc(100%-2rem))] rounded-3xl border border-[#E5E9E4] bg-white p-6 shadow-2xl backdrop:bg-black/50">
@@ -121,7 +124,10 @@ export default function Navbar({ onToggleSidebar, sidebarOpen, onOpenComplaint }
             <h2 id="admin-password-title" className="text-base font-bold text-[#24332D]">Change password</h2>
             <button type="button" aria-label="Close password form" onClick={() => dialog.current.close()} className="rounded-lg p-2 hover:bg-[#F5F2E9]"><X size={18} /></button>
           </div>
-          {passwordOpen && <PasswordForm />}
+          {passwordOpen && <PasswordForm onCancel={() => dialog.current.close()} onSaved={() => {
+            setPasswordSaved(true);
+            dialog.current.close();
+          }} />}
         </dialog>
       )}
     </header>

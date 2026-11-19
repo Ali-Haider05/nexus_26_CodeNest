@@ -40,6 +40,32 @@ function isId(value) {
     Number(value) > 0 && Number(value) <= 2147483647;
 }
 
+function validateFilters({ status, category, search, department_id }, isSuperAdmin) {
+  if (status !== undefined && status !== 'pending' && !adminStatuses.includes(status)) {
+    return 'Invalid status filter';
+  }
+  if ((category !== undefined && typeof category !== 'string') ||
+      (search !== undefined && typeof search !== 'string')) {
+    return 'Invalid category or search filter';
+  }
+  if (isSuperAdmin && department_id !== undefined && !isId(department_id)) {
+    return 'Invalid department_id filter';
+  }
+  return null;
+}
+
+const exportColumns = [
+  'ID', 'Title', 'Category', 'Department', 'Student Name', 'Status',
+  'Description', 'Reject Reason', 'Latest Remark', 'Created At', 'Updated At',
+];
+
+function csvCell(value) {
+  const text = (value instanceof Date ? value.toISOString() : String(value ?? ''))
+    .replace(/\r\n|[\r\n\u2028\u2029]/g, ' ');
+  const safe = /^\s*[=+@-]/.test(text) ? "'" + text : text;
+  return '"' + safe.replaceAll('"', '""') + '"';
+}
+
 async function loadComplaint(req, res, next) {
   const { id } = req.params;
   if (!isId(id)) return res.status(404).json({ message: 'Complaint not found' });
@@ -107,16 +133,8 @@ router.get('/mine', authorize('student'), async (req, res) => {
 router.get('/', authorize('dept_admin', 'super_admin'), async (req, res) => {
   const { status, department_id, category, search } = req.query;
   const isSuperAdmin = req.user.role === 'super_admin';
-  if (status !== undefined && status !== 'pending' && !adminStatuses.includes(status)) {
-    return res.status(400).json({ message: 'Invalid status filter' });
-  }
-  if ((category !== undefined && typeof category !== 'string') ||
-      (search !== undefined && typeof search !== 'string')) {
-    return res.status(400).json({ message: 'Invalid category or search filter' });
-  }
-  if (isSuperAdmin && department_id !== undefined && !isId(department_id)) {
-    return res.status(400).json({ message: 'Invalid department_id filter' });
-  }
+  const error = validateFilters(req.query, isSuperAdmin);
+  if (error) return res.status(400).json({ message: error });
 
   const department = isSuperAdmin ? department_id : req.user.department_id;
   const { rows } = await pool.query(
@@ -130,6 +148,51 @@ router.get('/', authorize('dept_admin', 'super_admin'), async (req, res) => {
     [isSuperAdmin, department ?? null, status ?? null, category ?? null, search?.trim() || null],
   );
   res.json(rows);
+});
+
+router.get('/export', authorize('student', 'dept_admin', 'super_admin'), async (req, res) => {
+  const { id, role } = req.user;
+  const { status, category, search, department_id } = req.query;
+  const isSuperAdmin = role === 'super_admin';
+  const error = validateFilters(req.query, isSuperAdmin);
+  if (error) return res.status(400).json({ message: error });
+
+  const department = isSuperAdmin ? department_id : req.user.department_id;
+  const { rows } = await pool.query(
+    `SELECT c.id, c.title, c.category, d.name AS department, u.name AS student_name,
+            c.status, c.description, c.reject_reason,
+            (SELECT r.remark FROM responses r WHERE r.complaint_id = c.id
+             ORDER BY r.created_at DESC NULLS LAST, r.id DESC LIMIT 1) AS latest_remark,
+            c.created_at, c.updated_at
+     FROM complaints c
+     JOIN departments d ON d.id = c.department_id
+     JOIN users u ON u.id = c.student_id
+     WHERE (($1 = 'student' AND c.student_id = $2)
+         OR ($1 = 'dept_admin' AND c.department_id = $3)
+         OR ($1 = 'super_admin' AND ($3::int IS NULL OR c.department_id = $3)))
+       AND ($4::text IS NULL OR c.status = $4)
+       AND ($5::text IS NULL OR c.category = $5)
+       AND ($6::text IS NULL OR strpos(lower(c.title), lower($6)) > 0
+                            OR strpos(lower(c.description), lower($6)) > 0
+                            OR ($1 <> 'super_admin' AND strpos(c.id::text, $6) > 0)
+                            OR ($1 = 'dept_admin' AND strpos(lower(u.name), lower($6)) > 0))
+     ORDER BY c.created_at DESC, c.id DESC`,
+    [role, id, department ?? null, status ?? null, category ?? null, search?.trim() || null],
+  );
+
+  const lines = [exportColumns.map(csvCell).join(',')];
+  for (const row of rows) {
+    lines.push([row.id, row.title, row.category, row.department, row.student_name, row.status,
+      row.description, row.reject_reason, row.latest_remark, row.created_at, row.updated_at].map(csvCell).join(','));
+  }
+  const date = new Date().toISOString().slice(0, 10);
+  res.set({
+    'Content-Type': 'text/csv; charset=utf-8',
+    'Content-Disposition': 'attachment; filename="complaints-report-' + date + '.csv"',
+    'Access-Control-Expose-Headers': 'Content-Disposition',
+    'Cache-Control': 'private, no-store',
+  });
+  res.send('\uFEFF' + lines.join('\r\n') + '\r\n');
 });
 
 router.get('/:id', loadComplaint, async (req, res) => {

@@ -1,9 +1,10 @@
+import DownloadCSVReport from '../common/DownloadCSVReport';
 import React, { useEffect, useState } from 'react';
 import StatusBadge from '../common/StatusBadge';
 import { complaintService } from '../../services/complaintService';
 import EmptyState from '../common/EmptyState';
 import { DEPARTMENTS, CATEGORY_CONFIG } from '../../constants/theme';
-import { Search, Eye, Download, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function AllComplaintsView({
   complaints = [],
@@ -48,31 +49,6 @@ export default function AllComplaintsView({
     currentPage * pageSize
   );
 
-  // Export CSV functionality
-  const handleExportCSV = () => {
-    if (filtered.length === 0) return;
-
-    const headers = ['ID', 'Title', 'Category', 'Department', 'Student', 'Status', 'Created'];
-    const rows = filtered.map((c) => [
-      c.id,
-      `"${(c.title || '').replace(/"/g, '""')}"`,
-      c.category,
-      c.department,
-      `"${c.studentName || ''}"`,
-      c.status,
-      c.createdAt || c.created_at || '',
-    ]);
-
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `CampusConnect_Complaints_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Title & Action */}
@@ -86,14 +62,9 @@ export default function AllComplaintsView({
           </p>
         </div>
 
-        <button
-          onClick={handleExportCSV}
-          disabled={loading || filtered.length === 0}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#153F35] hover:bg-[#194D40] text-white text-xs font-bold shadow-xs transition-colors shrink-0 disabled:opacity-50"
-        >
-          <Download size={15} />
-          Export CSV Report ({filtered.length})
-        </button>
+        <DownloadCSVReport disabled={deptFilter !== "all" && !selectedDepartment}
+          filters={{ role: "super_admin", department_id: selectedDepartment, status: statusFilter,
+            category: categoryFilter, search: searchTerm }} />
       </div>
 
       {/* Multi-Filter Bar */}

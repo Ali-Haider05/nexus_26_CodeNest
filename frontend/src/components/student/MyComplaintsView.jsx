@@ -1,3 +1,4 @@
+import DownloadCSVReport from '../common/DownloadCSVReport';
 import React, { useState } from 'react';
 import StatusBadge from '../common/StatusBadge';
 import CategoryBadge from '../common/CategoryBadge';
@@ -47,6 +48,8 @@ export default function MyComplaintsView({
           </p>
         </div>
 
+        <div className="flex flex-wrap items-start gap-2">
+          <DownloadCSVReport filters={{ status: statusFilter, category: categoryFilter, search: searchTerm }} />
         <button
           onClick={onNavigateSubmit}
           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#247653] hover:bg-[#194D40] text-white text-xs font-bold shadow-xs transition-colors shrink-0"
@@ -54,6 +57,7 @@ export default function MyComplaintsView({
           <PlusCircle size={16} />
           Lodge New Complaint
         </button>
+        </div>
       </div>
 
       {/* Filter / Search Bar */}

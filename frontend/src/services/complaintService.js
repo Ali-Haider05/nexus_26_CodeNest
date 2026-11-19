@@ -36,14 +36,23 @@ function readImage(file) {
   });
 }
 
+function complaintFilters({ role, status, department_id, category, search }) {
+  const query = new URLSearchParams();
+  if (status && status !== 'all') query.set('status', statusValue(status));
+  if (role === 'super_admin' && department_id && department_id !== 'all') query.set('department_id', department_id);
+  if (category && category !== 'all') query.set('category', category);
+  if (search?.trim()) query.set('search', search.trim());
+  return query;
+}
+
 export const complaintService = {
+  exportComplaints(filters) {
+    const query = complaintFilters(filters);
+    return api.request(path + '/export' + (query.size ? '?' + query : ''), { responseType: 'csv' });
+  },
   async getComplaints({ role, status, department_id, category, search } = {}) {
     if (role === 'student') return (await api.request(path + '/mine')).map(normalize);
-    const query = new URLSearchParams();
-    if (status && status !== 'all') query.set('status', statusValue(status));
-    if (role === 'super_admin' && department_id && department_id !== 'all') query.set('department_id', department_id);
-    if (category && category !== 'all') query.set('category', category);
-    if (search?.trim()) query.set('search', search.trim());
+    const query = complaintFilters({ role, status, department_id, category, search });
     return (await api.request(path + (query.size ? '?' + query : ''))).map(normalize);
   },
   async getComplaintById(id) {

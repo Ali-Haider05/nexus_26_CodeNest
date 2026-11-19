@@ -1,3 +1,4 @@
+import DownloadCSVReport from '../common/DownloadCSVReport';
 import React, { useState } from 'react';
 import StatusBadge from '../common/StatusBadge';
 import CategoryBadge from '../common/CategoryBadge';
@@ -49,7 +50,8 @@ export default function AssignedComplaintsView({
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-start gap-2">
+          <DownloadCSVReport filters={{ status: statusFilter, search: searchTerm }} />
           <span className="text-xs font-bold px-3 py-1.5 rounded-xl bg-[#F5F2E9] border border-[#E5E9E4] text-[#153F35]">
             Showing {filtered.length} of {complaints.length} Records
           </span>
